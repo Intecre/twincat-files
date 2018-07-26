@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="TxtFileString" Id="{660910e6-ae44-4a1b-84d5-50a6abc12022}">
+    <Declaration><![CDATA[TYPE TxtFileString : STRING(Param.TXT_FILE_MAX_STRING_LENGTH); END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

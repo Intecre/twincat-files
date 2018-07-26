@@ -1,0 +1,459 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="T_FileWriteBase" Id="{a17bb74f-1a47-4c10-8da3-0fab1596f8bf}" SpecialFunc="None">
+    <Declaration><![CDATA[(* Usage:
+ N.B. THIS CLASS DOES NOT CARE ABOUT THE DATA ADDED TO THE BUFFER.
+ 		IF THE FINAL FILE REQUIRES LINE SEPARATORS, ADD APPRPRIATE SEPARATORS TO THE FILE AS NECESSARY.
+ Call instance every scan while waiting for operations to complete.
+ SetFilePath()
+ ClearWriteBuffer();
+ As many times as necessary: 
+	AppendToBuffer();
+
+ When finished adding to buffer.
+ StartWrite();
+ #various props: Observe for complete.
+ *)
+ 
+FUNCTION_BLOCK T_FileWriteBase
+VAR
+// backing properties
+	_FilePath : Tc2_Utilities.T_MaxString;
+	_Start : BOOL;
+	_Busy : BOOL;
+	_Done : BOOL;
+	_Error : BOOL;
+	_ErrorId : UDINT;
+	_BufferClear : BOOL; // indicates reset has been called and buffer assigned.
+
+// Function Block Objects
+	FileOpen : FB_FileOpen; // Opens file
+	FileClose : FB_FileClose; // Closes file
+	FileWrite : FB_FileWrite; // write to file.
+	
+// Vars
+	FileHandle : UINT;			// file handle
+	
+	FileBuffer : POINTER TO BYTE; // holds file contents
+	FileBufferSize : UDINT;
+	FileExtenderBuffer : POINTER TO BYTE; // use if buffer needs extending.
+	
+// State Enum
+	State : E_FileBaseStates := WaitForStart;
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE State OF
+	
+	E_FileBaseStates.WaitForStart:	
+		
+		_Busy := FALSE;
+		
+		IF _Start THEN
+			_Start := FALSE;
+			_Done := FALSE;
+			_Error := FALSE;
+			_Busy := TRUE;
+			_ErrorId := E_AdsErr.NOERR;;
+			FileHandle := 0;
+			
+			State := OpenFile;		
+		END_IF
+
+	E_FileBaseStates.OpenFile:
+	
+		FileOpen(bExecute := FALSE);
+		
+		FileOpen( 
+			sNetId 		:= '', 
+			sPathName 	:= _FilePath,
+			nMode 		:= FOPEN_MODEWRITE OR FOPEN_MODEBINARY,
+			bExecute 	:= TRUE);
+		// Next Step
+		State := WaitForOpenComplete;
+
+	E_FileBaseStates.WaitForOpenComplete:
+	
+		FileOpen(bExecute	:= FALSE,
+					hFile 		=> FileHandle,
+					bError 		=> _Error,
+					nErrId 		=> _ErrorId);
+		
+		IF NOT FileOpen.bBusy THEN
+			State := SEL(_Error, WriteToFile, FinishAndCleanup);		
+		END_IF
+
+
+	E_FileBaseStates.WriteToFile:
+	
+		FileWrite(bExecute := FALSE);
+		
+		FileWrite(
+            sNetId 		:= '', 
+            hFile 		:= FileHandle, 
+            pWriteBuff 	:= FileBuffer, 
+            cbWriteLen 	:= FileBufferSize, 
+            bExecute 	:= TRUE, 
+            tTimeout 	:= );
+			
+		State := WriteToFileComplete;
+		
+	E_FileBaseStates.WriteToFileComplete:
+	
+		FileWrite(bExecute := FALSE, 
+					bError 		=> _Error, 
+					nErrId 		=> _ErrorId);
+		
+		IF NOT FileWrite.bBusy THEN
+			State := SEL(_Error, CloseFile, FinishAndCleanup);
+		END_IF
+		
+	E_FileBaseStates.CloseFile:	
+	
+		FileClose(bExecute := FALSE);
+		
+		FileClose(
+			sNetId 		:= '',
+			hFile 		:= FileHandle, 
+			bExecute 	:= TRUE);
+			
+		// Next Step
+		State := WaitForCloseComplete;
+
+	E_FileBaseStates.WaitForCloseComplete:
+	
+		FileClose(bExecute := FALSE,
+					bError 		=> _Error,
+					nErrId 		=> _ErrorId);
+					
+		IF NOT FileClose.bBusy THEN
+			FileHandle := 0;
+			State := FinishAndCleanup;
+		END_IF
+
+	E_FileBaseStates.FinishAndCleanup: 
+		
+		_Done := TRUE;
+		State := SEL(FileHandle <> 0, WaitForStart, CloseFile);
+		
+	ELSE // Error if we get here. Tidy up if we do.
+		
+		F_LogError(
+			CONCAT('Illegal State request in FB_FileWriteBase. Requested State: ', TO_STRING(State))
+			);
+		State := FinishAndCleanup; 
+
+END_CASE]]></ST>
+    </Implementation>
+    <Folder Name="Private" Id="{412e0153-c63c-4d7c-be6e-0439b93f52ec}" />
+    <Folder Name="Properties" Id="{87528650-1e88-4382-9e5d-e8299b3deea0}" />
+    <Method Name="AppendToBuffer" Id="{ed30a4b5-42ca-4074-b551-279771b1c7c2}">
+      <Declaration><![CDATA[METHOD PUBLIC AppendToBuffer : BOOL // appends data to current line
+VAR_INPUT
+	pDataForBuffer : POINTER TO BYTE; // address of data start
+	DataLength : UDINT; // length of data.
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF State = WaitForStart THEN
+	
+	//check valid data
+	IF pDataForBuffer = 0 OR DataLength = 0 THEN
+		F_LogError('Invalid data pointer passed to AppendToBuffer method.');
+		RETURN;
+	END_IF
+	
+	// append to buffer
+	AppendToBuffer := 
+		extendBufferSizeAndExtend(NewDataAddress := pDataForBuffer, NewDataLength := DataLength);
+
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="BufferClear" Id="{50310530-4399-4f18-9129-5fb8143dd498}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC BufferClear : BOOL // ready for first entry after ResetWriteBuffer]]></Declaration>
+      <Get Name="Get" Id="{15d30d3b-eff7-4ecd-b2c0-d7e697d887e3}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[BufferClear := _BufferClear;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Busy" Id="{3435a73f-669f-4662-94a7-b0910e8d29cb}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Busy : BOOL]]></Declaration>
+      <Get Name="Get" Id="{1df5ec69-a9cb-442e-a2c7-04e21e211aef}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Busy := _Busy;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="ClearWriteBuffer" Id="{b0eec295-e9b9-490a-93c2-aa96aa01838f}">
+      <Declaration><![CDATA[METHOD PUBLIC ClearWriteBuffer : BOOL // clears write buffer before adding data.
+
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF State = E_FileBaseStates.WaitForStart THEN
+	// reset the buffer
+	IF FileBuffer > 0 THEN
+		__DELETE(FileBuffer);
+		FileBufferSize := 0; // reset length
+	END_IF
+	
+END_IF
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="DataLength" Id="{1e799627-2f08-4c84-b6b3-72ecd3329c91}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC DataLength : UDINT // get size of the data in the buffer.]]></Declaration>
+      <Get Name="Get" Id="{d388164c-65c5-428b-902a-3635ba324bd5}">
+        <Declaration><![CDATA[
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[DataLength := FileBufferSize;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Done" Id="{8885927a-0426-449f-93f8-8e163f396e03}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Done : BOOL]]></Declaration>
+      <Get Name="Get" Id="{44bb8718-99ae-40ab-89f3-e180d77d91cc}">
+        <Declaration><![CDATA[
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Done := _Done;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Error" Id="{14cac3f8-afda-4c4d-b309-6597426c7eb4}" FolderPath="Properties\">
+      <Declaration><![CDATA[PROPERTY PUBLIC Error : BOOL]]></Declaration>
+      <Get Name="Get" Id="{a93934c7-26ce-4897-9d5a-c1bb8c00ae95}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Error := _Error;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="ErrorId" Id="{ecf2c841-79ab-47bd-83cb-33cbd33c102b}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC ErrorId : UDINT]]></Declaration>
+      <Get Name="Get" Id="{f6160b90-a24a-4037-983e-18b14d7385d4}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[ErrorId := _ErrorId;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="extendBufferSizeAndExtend" Id="{b518c6da-1a81-4ade-8d7d-da7851a44ab1}" FolderPath="Private\">
+      <Declaration><![CDATA[METHOD PRIVATE extendBufferSizeAndExtend : BOOL // extends the buffer by the specified amount
+VAR_INPUT
+	NewDataAddress : POINTER TO BYTE;
+	NewDataLength : UDINT; 
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// make sure extension buffer empty
+
+// If we have something in the FileBuffer, clear it down an extend it for a new buffer.
+IF FileBuffer > 0 THEN
+	
+	IF FileExtenderBuffer > 0 THEN 
+		__DELETE(FileExtenderBuffer);
+	END_IF
+	
+	// allocate new buffer space
+	FileExtenderBuffer := __NEW(BYTE, FileBufferSize);
+	
+	//check succesful
+	IF FileExtenderBuffer = 0 THEN
+		F_LogError('Out of memory trying to extend write buffer');
+		_Error := TRUE;
+		_ErrorId := E_AdsErr.DEVICE_NOMEMORY;
+		RETURN;
+	END_IF
+	
+	// move original data into this.
+	MEMCPY(destAddr := FileExtenderBuffer, srcAddr := FileBuffer, n := FileBufferSize);
+	
+	// delete the old buffer
+	__DELETE(FileBuffer);
+
+END_IF
+
+// Allocate new buffer to correct size.
+FileBuffer := __NEW(BYTE, (FileBufferSize + NewDataLength));
+
+//check for failure
+IF FileBuffer = 0 THEN
+	// tidy up if failed.
+	__DELETE(FileExtenderBuffer); // delete this allocation.
+	FileBufferSize := 0;
+	F_LogError('Out of memory trying to extend write buffer');
+	_Error := TRUE;
+	_ErrorId := E_AdsErr.DEVICE_NOMEMORY;
+	RETURN;
+END_IF
+
+// set new data to zero.
+MEMSET(destAddr := FileBuffer, fillByte := 0, n := (FileBufferSize + NewDataLength));
+
+// transfer the buffer to the original.
+MEMCPY(destAddr := FileBuffer, srcAddr := FileExtenderBuffer, n := FileBufferSize);
+// add the new data
+MEMCPY(destAddr := ADR(FileBuffer[FileBufferSize]), srcAddr := NewDataAddress, n:= NewDataLength);
+// update size.
+FileBufferSize := FileBufferSize + NewDataLength;
+
+// make sure extension buffer empty
+IF FileExtenderBuffer > 0 THEN 
+	__DELETE(FileExtenderBuffer);
+END_IF
+
+extendBufferSizeAndExtend := TRUE;
+_BufferClear := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_exit" Id="{b0916d0f-a030-4527-930f-7ae5ee641d8b}">
+      <Declaration><![CDATA[METHOD FB_exit : BOOL
+VAR_INPUT
+	bInCopyCode : BOOL; // if TRUE, the exit method is called for exiting an instance that is copied afterwards (online change).
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// tidy up (destructor)
+IF FileBuffer > 0 THEN
+	__DELETE(FileBuffer);
+END_IF
+
+IF FileExtenderBuffer > 0 THEN
+	__DELETE(FileExtenderBuffer);
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_init" Id="{49bbf03c-7311-40d7-a39d-9bab02a1f7f6}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[ClearWriteBuffer();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetFilePath" Id="{373a3a21-25d5-4b8b-b64a-ddd9993ed119}">
+      <Declaration><![CDATA[METHOD PUBLIC SetFilePath : BOOL
+VAR_INPUT
+	FilePath : Tc2_Utilities.T_MaxString;
+END_VAR
+VAR_INST
+	count: INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF State = WaitForStart THEN
+	_FilePath := FilePath;
+	SetFilePath := TRUE;
+	count := count + 1;
+ELSE
+	SetFilePath := FALSE;
+END_IF
+	]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="StartWrite" Id="{133408e1-b251-47a7-8ed7-2ddc1086688e}">
+      <Declaration><![CDATA[METHOD PUBLIC StartWrite : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//validate start is possible
+IF (State = WaitForStart) AND (DataLength > 0 )  THEN
+	_Start := TRUE;
+END_IF
+
+StartWrite := _Start;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="T_FileWriteBase">
+      <LineId Id="4140" Count="11" />
+      <LineId Id="4153" Count="26" />
+      <LineId Id="4192" Count="2" />
+      <LineId Id="4253" Count="0" />
+      <LineId Id="4196" Count="56" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileWriteBase.AppendToBuffer">
+      <LineId Id="75" Count="11" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileWriteBase.BufferClear.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileWriteBase.Busy.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileWriteBase.ClearWriteBuffer">
+      <LineId Id="78" Count="5" />
+      <LineId Id="103" Count="2" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileWriteBase.DataLength.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileWriteBase.Done.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileWriteBase.Error.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileWriteBase.ErrorId.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileWriteBase.extendBufferSizeAndExtend">
+      <LineId Id="62" Count="1" />
+      <LineId Id="3" Count="0" />
+      <LineId Id="60" Count="1" />
+      <LineId Id="4" Count="18" />
+      <LineId Id="64" Count="1" />
+      <LineId Id="23" Count="31" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileWriteBase.FB_exit">
+      <LineId Id="17" Count="0" />
+      <LineId Id="7" Count="1" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="13" Count="2" />
+      <LineId Id="6" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileWriteBase.FB_init">
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileWriteBase.SetFilePath">
+      <LineId Id="10" Count="1" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="14" Count="2" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileWriteBase.StartWrite">
+      <LineId Id="13" Count="0" />
+      <LineId Id="7" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="6" Count="0" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

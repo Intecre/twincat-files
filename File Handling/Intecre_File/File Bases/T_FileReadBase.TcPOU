@@ -1,0 +1,481 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="T_FileReadBase" Id="{0b68f5a6-75d9-48fc-a3e8-9282459b65be}" SpecialFunc="None">
+    <Declaration><![CDATA[(*Usage:
+ N.B. FILE BUFFER IS STORED IN THIS OBJECT, IN MEMORY.  DO NOT DO ACCESS ANOTHER FILE
+ 		WITH THIS BLOCK UNTIL YOU HAVE FINISHED WITH IT.
+ 		IF YOU WANT TO EXTEND THE LIFE OF THIS BUFFFER, CREATE A NEW ONE ELSEWHERE AND MEMCPY INTO IT!
+ Call instance (i.e. FileRead();) every scan while waiting for operations to complete.
+ SetFilePath()
+ [OPTIONAL] StartCheckFileExists(); . Only recall if necessary (i.e. long time between file path set)
+  
+ StartRead();
+
+ IF BufferAvailable
+ use address and size indicated by DataBuffer and DataLength.
+*)
+
+FUNCTION_BLOCK T_FileReadBase
+VAR
+// backing properties
+	_FilePath : Tc2_Utilities.T_MaxString;
+	_Start : BOOL;
+	_Busy : BOOL;
+	_Done : BOOL;
+	_Error : BOOL;
+	_ErrorId : UDINT;
+	_Read : BOOL; // if true, reads the file.
+	_FileExists: BOOL; 
+	_DataBuffer : POINTER TO BYTE; // remaining data (i.e. crc is stripped).
+	_DataLength : UDINT;
+
+// Function Block Objects
+	FileOpen : FB_FileOpen; // Opens file 
+	FileClose : FB_FileClose; // Closes file
+	FileSeek : FB_FileSeek; // Move pointer to file position.
+	FileTell	: FB_FileTell; // get file information.
+	FileRead	: FB_FileRead; // read from file.
+	
+// Vars
+	CheckFileExists : BOOL;		// when set true, check the file exists.
+	FileHandle : UINT;			// file handle
+	FileBufferSize : UDINT;			// size of file in bytes
+	FileBuffer : POINTER TO BYTE; // holds file contents
+
+// State Enum
+	State : E_FileBaseStates := E_FileBaseStates.WaitForStart;
+	
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE State OF
+	
+	E_FileBaseStates.WaitForStart:	
+		
+		_Busy := FALSE;
+		
+		IF _Start THEN
+			_Start := FALSE;
+			_Busy := TRUE;
+			_Done := FALSE;
+			_Error := FALSE;
+			_ErrorId := E_AdsErr.NOERR;
+			FileHandle := 0;
+			State := OpenFile;
+			
+			// delete pointer if it previously exists. 
+			IF FileBuffer > 0 THEN 
+				__DELETE(FileBuffer);
+			END_IF
+			
+		END_IF
+
+	E_FileBaseStates.OpenFile:
+	
+		FileOpen(bExecute := FALSE);
+		
+		FileOpen( 
+			sNetId 		:= '', 
+			sPathName 	:= _FilePath,
+			nMode 		:= FOPEN_MODEREAD OR FOPEN_MODEBINARY, // Binary uses CRLF.
+			bExecute 	:= TRUE);
+		// Next Step
+		State := WaitForOpenComplete;
+
+	E_FileBaseStates.WaitForOpenComplete:
+	
+		FileOpen(bExecute	:= FALSE,
+					hFile 		=> FileHandle,
+					bError 		=> _Error,
+					nErrId 		=> _ErrorId);
+		
+		IF NOT FileOpen.bBusy THEN
+			_FileExists := NOT(_ErrorId = E_AdsErr.DEVICE_NOTFOUND); // check whether file exists.
+			
+			IF CheckFileExists THEN	
+				// if checking whether a file exists, suppress error
+				CheckFileExists := FALSE;
+				_Error := FALSE;
+				_ErrorId := 0;
+				State := FinishAndCleanup;
+				
+			ELSE
+				State := SEL(_Error, SeekEnd, FinishAndCleanup);
+			END_IF
+			
+		END_IF
+
+	E_FileBaseStates.SeekEnd:
+	
+		// move file pointer to end of file.
+		FileSeek(bExecute := FALSE);
+		
+	 	FileSeek(
+            sNetId		:= '', 
+            hFile		:= FileHandle, 
+            nSeekPos	:= 0, 
+            eOrigin		:= E_SeekOrigin.SEEK_END, 
+            bExecute	:= TRUE);
+			
+		State := WaitForSeekEndComplete;
+			
+	E_FileBaseStates.WaitForSeekEndComplete:
+	
+		FileSeek(bExecute	:= FALSE,
+					bError 		=> _Error,
+					nErrId 		=> _ErrorId);
+		
+		IF NOT FileSeek.bBusy THEN
+			State := SEL(_Error, GetSize, FinishAndCleanup);
+		END_IF
+	
+	E_FileBaseStates.GetSize:
+	
+		// As file pointer is at the end of the file, we can find size.
+		FileTell(bExecute := FALSE);
+		
+		FileTell(
+            sNetId		:= '', 
+            hFile		:= FileHandle, 
+            bExecute	:= TRUE, 
+            tTimeout	:= );
+		
+		State := WaitForGetSizeComplete;
+	
+	E_FileBaseStates.WaitForGetSizeComplete:
+	
+		FileTell(bExecute 	:= FALSE,
+					bError		=> _Error, 
+					nErrId		=> _ErrorId, 
+					nSeekPos	=> );
+		
+		IF NOT FileTell.bBusy THEN
+			IF _Error THEN
+				State :=  FinishAndCleanup;
+			ELSE
+				FileBufferSize := DINT_TO_UDINT(FileTell.nSeekPos);
+				State := SeekStart;
+			END_IF
+	
+		END_IF
+	
+	E_FileBaseStates.SeekStart:
+	
+		// move file pointer to end of file.
+		FileSeek(bExecute := FALSE);
+		
+	 	FileSeek(
+            sNetId		:= '', 
+            hFile		:= FileHandle, 
+            nSeekPos	:= 0, 
+            eOrigin		:= E_SeekOrigin.SEEK_SET, 
+            bExecute	:= TRUE);
+			
+		State := WaitForSeekStartComplete;
+	
+	E_FileBaseStates.WaitForSeekStartComplete:
+	
+		FileSeek(bExecute 	:= FALSE,
+					bError 		=> _Error,
+					nErrId 		=> _ErrorId);
+		
+		IF NOT FileSeek.bBusy THEN
+			State := SEL(_Error, CreateBuffer, FinishAndCleanup);
+		END_IF
+	
+	E_FileBaseStates.CreateBuffer:
+	
+		// create the buffer
+		FileBuffer := __NEW(BYTE, FileBufferSize);
+		
+		IF FileBuffer > 0 THEN // if successfull
+			State := ReadFromFile;
+			
+		ELSE // create buffer failed.
+			_Error 	:= TRUE;
+			_ErrorId 	:= 1802; // Out of memory
+			State 		:= FinishAndCleanup;
+			
+		END_IF
+
+	E_FileBaseStates.ReadFromFile:
+	
+		FileRead(bExecute := FALSE);
+		
+		FileRead(
+            sNetId 		:= '', 
+            hFile 		:= FileHandle, 
+            pReadBuff 	:= FileBuffer, 
+            cbReadLen 	:= FileBufferSize, 
+            bExecute 	:= TRUE, 
+            tTimeout 	:= );
+			
+		State := ReadFromFileComplete;
+		
+	E_FileBaseStates.ReadFromFileComplete:
+	
+		FileRead(bExecute := FALSE, 
+					bError 		=> _Error, 
+					nErrId 		=> _ErrorId);
+		
+		IF NOT FileRead.bBusy THEN
+			State := SEL(_Error, CloseFile, FinishAndCleanup);
+		END_IF
+		
+	E_FileBaseStates.CloseFile:	
+	
+		FileClose(bExecute := FALSE);
+		
+		FileClose(
+			sNetId 		:= '',
+			hFile 		:= FileHandle, 
+			bExecute 	:= TRUE);
+			
+		// Next Step
+		State := WaitForCloseComplete;
+
+	E_FileBaseStates.WaitForCloseComplete:
+	
+		FileClose(bExecute := FALSE,
+					bError 		=> _Error,
+					nErrId 		=> _ErrorId);
+					
+		IF NOT FileClose.bBusy THEN
+			FileHandle := 0;
+			State := FinishAndCleanup;
+		END_IF
+
+	E_FileBaseStates.FinishAndCleanup: 
+		
+		_Done := TRUE;
+		State := SEL(FileHandle <> 0, WaitForStart, CloseFile);
+		
+	ELSE // Error if we get here. Tidy up if we do.
+		
+		F_LogError(
+			CONCAT('Illegal State request in FB_FileBase. Requested State: ', TO_STRING(State))
+			);
+		State := FinishAndCleanup; 
+
+END_CASE]]></ST>
+    </Implementation>
+    <Folder Name="Private" Id="{a09af76c-4cc9-4509-a71e-1f4f13c838b2}" />
+    <Folder Name="Properties" Id="{aada1140-caa3-493b-8e3b-cf4165da8dc3}" />
+    <Property Name="BufferAvailable" Id="{98377ef3-a95a-4c75-b331-f39de9585bf8}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC BufferAvailable : BOOL]]></Declaration>
+      <Get Name="Get" Id="{30a1377a-211d-41dd-a7c4-98352e2d8f09}">
+        <Declaration><![CDATA[
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[BufferAvailable := _DataBuffer > 0 AND_THEN _DataLength > 0;
+]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Busy" Id="{57a1e3a6-2f68-46aa-b96f-df10bcc34601}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Busy : BOOL]]></Declaration>
+      <Get Name="Get" Id="{74b775c8-9d8c-4ad4-815f-d94472e942e6}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Busy := _Busy;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="DataBuffer" Id="{f6b2a83c-7a02-4aa6-b6a4-02f18458dbc0}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC DataBuffer : POINTER TO BYTE]]></Declaration>
+      <Get Name="Get" Id="{0f2d0b3d-ff44-4397-bb77-7f2eea33e017}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[DataBuffer := _DataBuffer;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="DataLength" Id="{d036b2b9-ccc4-4aff-9b51-a6dccc677aae}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC DataLength : UDINT]]></Declaration>
+      <Get Name="Get" Id="{9792ae36-ae30-4817-8617-61c55397b9b1}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[DataLength := _DataLength;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Done" Id="{17a9325e-da93-4c8a-a8c0-86a326e86e72}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Done : BOOL]]></Declaration>
+      <Get Name="Get" Id="{4032a731-f3b1-4152-b5d0-762708aedfbb}">
+        <Declaration><![CDATA[
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Done := _Done;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Error" Id="{75e8f711-3188-4cc3-8b9b-25083fa2b64c}" FolderPath="Properties\">
+      <Declaration><![CDATA[PROPERTY PUBLIC Error : BOOL]]></Declaration>
+      <Get Name="Get" Id="{eac10381-1173-4876-add8-d4707e2632d4}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Error := _Error;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="ErrorId" Id="{d359406d-0387-4f26-9d01-1273710c3e19}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC ErrorId : UDINT]]></Declaration>
+      <Get Name="Get" Id="{8570eaf2-e7b8-440a-b37a-07ed61405b80}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[ErrorId := _ErrorId;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="FB_exit" Id="{fd4f5eea-e93e-4b5d-ab02-84bf37c9632f}">
+      <Declaration><![CDATA[METHOD FB_exit : BOOL
+VAR_INPUT
+	bInCopyCode : BOOL; // if TRUE, the exit method is called for exiting an instance that is copied afterwards (online change).
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF FileBuffer > 0 THEN
+	__DELETE(FileBuffer);
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="FileExists" Id="{727d6db5-f3eb-4edc-91a2-e76653e96821}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC FileExists : BOOL]]></Declaration>
+      <Get Name="Get" Id="{c02442d1-a55b-44f6-953b-2b7372286d40}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[FileExists := _FileExists;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="SetFilePath" Id="{aa6478ba-4af4-49fd-845e-54cce517de49}">
+      <Declaration><![CDATA[METHOD PUBLIC SetFilePath : BOOL
+VAR_INPUT
+	FilePath : Tc2_Utilities.T_MaxString;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF State = WaitForStart THEN
+	_FilePath := FilePath;
+	SetFilePath := TRUE;
+ELSE
+	SetFilePath := FALSE;
+END_IF
+	]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="StartCheckFileExists" Id="{4f596f6e-1e68-447a-bbbd-e3b574a5eff2}">
+      <Declaration><![CDATA[METHOD PUBLIC StartCheckFileExists : BOOL]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF State = WaitForStart THEN
+	CheckFileExists := TRUE;
+	_Start := TRUE;
+	StartCheckFileExists := TRUE;
+ELSE
+	StartCheckFileExists := FALSE;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="StartRead" Id="{3b23041b-2295-44d3-bb16-d270e002ae6c}">
+      <Declaration><![CDATA[METHOD PUBLIC StartRead : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//validate start is possible
+IF State = WaitForStart THEN
+	_Start := TRUE;
+	_Read	:= TRUE;
+END_IF
+
+StartRead := _Start;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="storeDataBufferAddressAndSizeIfValid" Id="{d5e7f845-e385-464f-baa8-ca80af23c95c}" FolderPath="Private\">
+      <Declaration><![CDATA[METHOD PRIVATE storeDataBufferAddressAndSizeIfValid
+
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_DataBuffer := ADR(FileBuffer);
+_DataLength := FileBufferSize;
+]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="T_FileReadBase">
+      <LineId Id="8871" Count="12" />
+      <LineId Id="8888" Count="159" />
+      <LineId Id="9061" Count="35" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileReadBase.BufferAvailable.Get">
+      <LineId Id="3" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileReadBase.Busy.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileReadBase.DataBuffer.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileReadBase.DataLength.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileReadBase.Done.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileReadBase.Error.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileReadBase.ErrorId.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileReadBase.FB_exit">
+      <LineId Id="7" Count="1" />
+      <LineId Id="6" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileReadBase.FileExists.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileReadBase.SetFilePath">
+      <LineId Id="10" Count="1" />
+      <LineId Id="14" Count="2" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileReadBase.StartCheckFileExists">
+      <LineId Id="6" Count="1" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="8" Count="2" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileReadBase.StartRead">
+      <LineId Id="13" Count="0" />
+      <LineId Id="7" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="6" Count="0" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileReadBase.storeDataBufferAddressAndSizeIfValid">
+      <LineId Id="4" Count="1" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

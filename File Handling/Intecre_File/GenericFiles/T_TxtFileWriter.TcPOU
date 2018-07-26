@@ -1,0 +1,251 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="T_TxtFileWriter" Id="{7877d6c4-ac8f-4f51-9d97-6af63fe863ea}" SpecialFunc="None">
+    <Declaration><![CDATA[// Usage:
+// Call instance every scan while waiting for operations to complete.
+// SetFileParams() Set the File directory 
+// GetFile() Get the File.
+// #various props: Observe the properties to see whether it passed the file checks.
+// NextRow()
+// #sField, Row, Column: Use properties to access values, using row and column.
+FUNCTION_BLOCK T_TxtFileWriter
+VAR
+// state vars.
+	filePath : Tc2_Utilities.T_MaxString; // filepath
+	
+// backing properties	
+	_Row : UINT; // current Row number (zero indexed)
+	_Error : BOOL;
+	_ErrorId : UDINT; // E_AdsErr
+	
+// Objects	
+	fileWrite : T_FileWriteBase;(* Writes one record (line) *)
+	
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fileWrite();]]></ST>
+    </Implementation>
+    <Folder Name="Methods" Id="{557beb1e-a5df-4c97-b5bc-93adb3602a98}" />
+    <Folder Name="Properties" Id="{a117d6a1-550f-4f02-b9c4-485c0f0e05a4}" />
+    <Property Name="BufferClear" Id="{0522faa3-edb1-481d-acb2-0f2b11e4cfe4}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC BufferClear : BOOL // ready for first entry after ResetWriteBuffer]]></Declaration>
+      <Get Name="Get" Id="{f9d762fb-38dd-41b2-96e0-c0bd6fde12bc}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[BufferClear := fileWrite.BufferClear;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Busy" Id="{98647035-9385-4ef7-b495-16d35f24cc0f}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Busy : BOOL]]></Declaration>
+      <Get Name="Get" Id="{515a2227-6b90-4704-800e-a8058a3dfea2}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Busy := fileWrite.Busy;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="ClearBuffer" Id="{126c2a98-1f93-4800-953b-913f8017ebdf}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD PUBLIC ClearBuffer : BOOL // Clears the buffer for first write.
+
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[ClearBuffer := fileWrite.ClearWriteBuffer();
+_Error := fileWrite.Error;
+_ErrorId := fileWrite.ErrorId;
+
+_Row := 0;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Done" Id="{8806e327-c12a-45d4-9890-e2566aebb370}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Done : BOOL]]></Declaration>
+      <Get Name="Get" Id="{c0a2169e-6f0b-4f6f-b365-9e63bd56e566}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Done := fileWrite.Done;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Error" Id="{4ae623c8-15ab-4af6-8d4e-41659dfa894b}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Error : BOOL]]></Declaration>
+      <Get Name="Get" Id="{ebfc107a-9475-4fd4-80d7-f90cc2a4cd9b}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Error := _Error := fileWrite.Error;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="ErrorId" Id="{45803805-22fb-411d-b0e9-216b3c32d09d}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC ErrorId : UDINT]]></Declaration>
+      <Get Name="Get" Id="{0a9283c3-c71d-4a18-a2e8-7748a5cb78b5}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[ErrorId := _ErrorId := fileWrite.ErrorId;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="NewLine" Id="{3fd784f3-5259-4473-a47f-b28775c734a6}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD PUBLIC NewLine // Make a New Line in the File
+VAR_INST
+	tempByte : BYTE;
+END_VAR
+VAR CONSTANT
+	CARRIAGE_RETURN : BYTE := 16#D;
+	LINE_FEED : BYTE := 16#A;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// load up CR.
+tempByte := CARRIAGE_RETURN;
+
+//Write.
+fileWrite.AppendToBuffer(
+		pDataForBuffer := ADR(tempByte),
+		DataLength := SIZEOF(tempByte)
+	);
+
+// check for errors
+IF Error THEN // Error looks at FileWrite.Error
+	RETURN;
+END_IF
+
+// load up LF.
+tempByte := LINE_FEED;
+
+//Write.
+fileWrite.AppendToBuffer(
+		pDataForBuffer := ADR(tempByte),
+		DataLength := SIZEOF(tempByte)
+	);	
+
+// check for errors
+IF Error THEN // Error looks at FileWrite.Error
+	RETURN;
+END_IF
+
+_Row := _Row + 1;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Row" Id="{0b28ec25-4b0f-46d2-9ab4-0723147d7906}" FolderPath="Properties\">
+      <Declaration><![CDATA[PROPERTY PUBLIC Row : UINT]]></Declaration>
+      <Get Name="Get" Id="{4d37301a-2b10-4254-b922-02a3a36abbbd}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Row := _Row;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="SetFileParams" Id="{78577382-50fd-4e7d-96af-2c5f86f38a31}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD PUBLIC SetFileParams
+VAR_INPUT
+	FilePath : Tc2_Utilities.T_MaxString;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^.filePath := FilePath; // for debug only.
+
+fileWrite.SetFilePath(FilePath := FilePath);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Write" Id="{353e5bc5-048f-4831-8685-df85998479ca}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD PUBLIC Write// Append to current row
+VAR_IN_OUT CONSTANT 
+	Entry : TxtFileString; 
+END_VAR
+
+VAR_INST
+	locStr : TxtFileString; // This has a valid memory address (inputs dont)
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[locStr := Entry;
+
+// Add string.
+fileWrite.AppendToBuffer(
+	pDataForBuffer := ADR(locStr),
+	DataLength := INT_TO_UDINT(LEN(locStr))
+);
+
+IF Error THEN // Error looks at FileWrite.Error
+	RETURN;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WriteLine" Id="{3bc6e7f9-ad51-4130-8a49-7cbd01169802}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD PUBLIC WriteLine// Append to current row
+VAR_IN_OUT CONSTANT 
+	Entry : TxtFileString; 
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Write( Entry );
+
+IF Error THEN // Error looks at FileWrite.Error
+	RETURN;
+END_IF
+
+NewLine();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WriteToFile" Id="{0024c296-5625-42b9-ae4c-00e67d013509}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD PUBLIC WriteToFile // Write Buffer to File.]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF Error THEN // Error looks at FileWrite.Error
+	RETURN;
+END_IF
+
+fileWrite.StartWrite();
+]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="T_TxtFileWriter">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_TxtFileWriter.BufferClear.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_TxtFileWriter.Busy.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_TxtFileWriter.ClearBuffer">
+      <LineId Id="3" Count="2" />
+      <LineId Id="7" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_TxtFileWriter.Done.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_TxtFileWriter.Error.Get">
+      <LineId Id="3" Count="0" />
+    </LineIds>
+    <LineIds Name="T_TxtFileWriter.ErrorId.Get">
+      <LineId Id="3" Count="0" />
+    </LineIds>
+    <LineIds Name="T_TxtFileWriter.NewLine">
+      <LineId Id="3" Count="28" />
+    </LineIds>
+    <LineIds Name="T_TxtFileWriter.Row.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_TxtFileWriter.SetFileParams">
+      <LineId Id="4" Count="2" />
+    </LineIds>
+    <LineIds Name="T_TxtFileWriter.Write">
+      <LineId Id="3" Count="0" />
+      <LineId Id="17" Count="9" />
+    </LineIds>
+    <LineIds Name="T_TxtFileWriter.WriteLine">
+      <LineId Id="23" Count="0" />
+      <LineId Id="38" Count="0" />
+      <LineId Id="24" Count="2" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="39" Count="0" />
+    </LineIds>
+    <LineIds Name="T_TxtFileWriter.WriteToFile">
+      <LineId Id="3" Count="2" />
+      <LineId Id="13" Count="1" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

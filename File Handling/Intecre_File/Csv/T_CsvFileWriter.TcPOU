@@ -1,0 +1,304 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="T_CsvFileWriter" Id="{1085c9eb-e997-446a-b003-e836d48add8e}" SpecialFunc="None">
+    <Declaration><![CDATA[// Usage:
+// Call instance (i.e. ofbCsvRead();) every scan while waiting for operations to complete.
+// SetFileParams() Set the File directory and separator variable. 
+// GetFile() Get the File.
+// #various props: Observe the properties to see whether it passed the file checks.
+// NextField() Next through the fields of the CSV. 
+// #sField, Row, Column: Use properties to access values, using row and column.
+FUNCTION_BLOCK T_CsvFileWriter
+VAR
+// state vars.
+	filePath : Tc2_Utilities.T_MaxString; // filepath
+	
+// backing properties	
+	_Row : UINT; // current Row number (zero indexed)
+	_Column : UINT; // current Column number (zero indexed)
+	_Error : BOOL;
+	_ErrorId : UDINT; // E_AdsErr
+	
+// Objects	
+	fileWrite : T_FileWriteBase;(* Writes one record (line) *)
+	
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fileWrite();]]></ST>
+    </Implementation>
+    <Folder Name="Methods" Id="{851d5649-a418-4459-be3f-e02c0e797249}" />
+    <Folder Name="Properties" Id="{b659b1b2-9be8-4a5a-ae17-3f1cba8e2b83}" />
+    <Method Name="AddStringField" Id="{6b256194-708f-47b4-8712-19db3b00ab17}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD PUBLIC AddStringField// Add Field. Adds CSV separator to previous field, if it exists
+VAR_INPUT 
+	sFieldString : STRING; 
+END_VAR
+
+VAR_INST
+	sFieldStringLocal : STRING; // This has a valid memory address (inputs dont)
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[sFieldStringLocal := sFieldString;
+// append separator to previous field if not first field
+IF _Column > 0 THEN 
+	
+	fileWrite.AppendToBuffer(
+		pDataForBuffer := ADR(Tc2_Utilities.DEFAULT_CSV_FIELD_SEP),
+		DataLength := SIZEOF(Tc2_Utilities.DEFAULT_CSV_FIELD_SEP)
+	);	
+
+	IF Error THEN // Error looks at FileWrite.Error
+		RETURN;
+	END_IF
+	
+END_IF
+
+// Add string.
+fileWrite.AppendToBuffer(
+	pDataForBuffer := ADR(sFieldStringLocal),
+	DataLength := INT_TO_UDINT(LEN(sFieldString))
+);
+
+IF Error THEN // Error looks at FileWrite.Error
+	RETURN;
+END_IF
+
+_Column := _Column + 1;
+
+
+
+
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="BufferClear" Id="{901fb2e9-30b2-48f5-b584-516e533e298f}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC BufferClear : BOOL // ready for first entry after ResetWriteBuffer]]></Declaration>
+      <Get Name="Get" Id="{87d640a3-c412-4888-b13f-b0c746de5570}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[BufferClear := fileWrite.BufferClear;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Busy" Id="{41c6db38-0b0d-4447-b64b-3e8adc0e26f7}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Busy : BOOL]]></Declaration>
+      <Get Name="Get" Id="{f2505e27-9442-4b46-8e12-aa93326ad056}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Busy := fileWrite.Busy;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="ClearBuffer" Id="{5cf7386f-4069-47c8-8b51-3c7915ff54c3}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD PUBLIC ClearBuffer : BOOL // Clears the buffer for first write.
+
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[ClearBuffer := fileWrite.ClearWriteBuffer();
+_Error := fileWrite.Error;
+_ErrorId := fileWrite.ErrorId;
+
+_Column := 0;
+_Row := 0;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Column" Id="{4154d437-670b-4c46-8189-dec07219bf56}" FolderPath="Properties\">
+      <Declaration><![CDATA[PROPERTY PUBLIC Column : UINT]]></Declaration>
+      <Get Name="Get" Id="{5229104c-11a4-430e-b480-93838f039e95}">
+        <Declaration><![CDATA[
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Column := _Column;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Done" Id="{d42f7110-5897-439c-bbae-068242a89b8f}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Done : BOOL]]></Declaration>
+      <Get Name="Get" Id="{659f3dc4-56a5-4e91-9c8b-70c7354c677e}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Done := fileWrite.Done;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Error" Id="{cabe518f-7a20-4f3b-af75-f0b5fd981f35}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Error : BOOL]]></Declaration>
+      <Get Name="Get" Id="{2e30b962-2af5-4d3a-aa4f-b94fffa0c7f3}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_Error := fileWrite.Error;
+Error := _Error;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="ErrorId" Id="{8a0ad82f-2047-407f-be26-a8a4d373d613}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC ErrorId : UDINT]]></Declaration>
+      <Get Name="Get" Id="{af85b4d7-6517-4d60-b88b-9b3abd8c09df}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_ErrorId := fileWrite.ErrorId;
+ErrorId := _ErrorId;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="NewLine" Id="{098e0aae-9b88-4db9-b422-7efa6a9d491f}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD PUBLIC NewLine // Make a New Line in the File
+VAR_INST
+	tempByte : BYTE;
+END_VAR
+VAR CONSTANT
+	CARRIAGE_RETURN : BYTE := 16#D;
+	LINE_FEED : BYTE := 16#A;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// load up CR.
+tempByte := CARRIAGE_RETURN;
+
+//Write.
+fileWrite.AppendToBuffer(
+		pDataForBuffer := ADR(tempByte),
+		DataLength := SIZEOF(tempByte)
+	);
+
+// check for errors
+IF Error THEN // Error looks at FileWrite.Error
+	RETURN;
+END_IF
+
+// load up LF.
+tempByte := LINE_FEED;
+
+//Write.
+fileWrite.AppendToBuffer(
+		pDataForBuffer := ADR(tempByte),
+		DataLength := SIZEOF(tempByte)
+	);	
+
+// check for errors
+IF Error THEN // Error looks at FileWrite.Error
+	RETURN;
+END_IF
+
+_Row := _Row + 1;
+_Column := 0;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Row" Id="{b6894911-a846-43d5-8a56-942db9a3d87a}" FolderPath="Properties\">
+      <Declaration><![CDATA[PROPERTY PUBLIC Row : UINT]]></Declaration>
+      <Get Name="Get" Id="{02c22d10-04b0-4b99-a2c8-c214c28f1c74}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Row := _Row;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="SetFileParams" Id="{6d2c1a3e-b8ca-4bf4-a258-44ae4a711c36}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD PUBLIC SetFileParams
+VAR_INPUT
+	FilePath : Tc2_Utilities.T_MaxString;
+	Separator: BYTE; // Updates TC Utilities Global_Variables DEFAULT_CSV_FIELD_SEP
+END_VAR
+VAR_INST
+	debugCount : INT;
+END_VAR
+VAR CONSTANT
+	ASCI_SEMI_COLON : BYTE := 16#3B;
+	ASCI_COMMA		: BYTE := 16#2C;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// THIS^ references the base object properties
+THIS^.filePath := FilePath; // for debug only.
+
+fileWrite.SetFilePath(FilePath := FilePath);
+
+// Validate separator.
+IF Separator = ASCI_SEMI_COLON THEN
+	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := 16#3B;
+	
+ELSIF Separator = ASCI_COMMA THEN
+	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := 16#3B;
+	
+ELSE
+	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := 16#3B;
+	
+END_IF
+
+debugCount := debugCount + 1;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WriteToFile" Id="{52b0a0ab-c039-44db-b778-31b0420765df}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD PUBLIC WriteToFile // Write Buffer to File. Calls "NewLine"() first.]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF Error THEN // Error looks at FileWrite.Error
+	RETURN;
+END_IF
+
+// always add final CRLF.
+NewLine();
+
+IF Error THEN // Error looks at FileWrite.Error
+	RETURN;
+END_IF
+
+fileWrite.StartWrite();
+]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="T_CsvFileWriter">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileWriter.AddStringField">
+      <LineId Id="3" Count="30" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileWriter.BufferClear.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileWriter.Busy.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileWriter.ClearBuffer">
+      <LineId Id="3" Count="4" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileWriter.Column.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileWriter.Done.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileWriter.Error.Get">
+      <LineId Id="3" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileWriter.ErrorId.Get">
+      <LineId Id="3" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileWriter.NewLine">
+      <LineId Id="3" Count="29" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileWriter.Row.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileWriter.SetFileParams">
+      <LineId Id="3" Count="16" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileWriter.WriteToFile">
+      <LineId Id="3" Count="11" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

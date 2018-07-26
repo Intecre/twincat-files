@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <DUT Name="E_FileBaseStates" Id="{6f5081ba-2dc4-433a-9a4b-c9ab8f49656f}">
+    <Declaration><![CDATA[TYPE E_FileBaseStates :
+(
+	WaitForStart,
+	OpenFile,
+	WaitForOpenComplete,
+	SeekEnd,
+	WaitForSeekEndComplete,
+	GetSize,
+	WaitForGetSizeComplete,
+	SeekStart,
+	WaitForSeekStartComplete,
+	CreateBuffer,
+	ReadFromFile,
+	ReadFromFileComplete,
+	WriteToFile,
+	WriteToFileComplete,
+	CloseFile,
+	WaitForCloseComplete,
+	FinishAndCleanup ) INT := WaitForStart;
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

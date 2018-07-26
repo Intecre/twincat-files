@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <GVL Name="Character" Id="{6524787a-9b6c-4eb5-95be-b8cb40a5bf0f}">
+    <Declaration><![CDATA[VAR_GLOBAL CONSTANT
+	CARRIAGE_RETURN : BYTE := 16#D;
+	LINE_FEED : BYTE := 16#A;
+	ASCI_SEMI_COLON : BYTE := 16#3B;
+	ASCI_COMMA		: BYTE := 16#2C;
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

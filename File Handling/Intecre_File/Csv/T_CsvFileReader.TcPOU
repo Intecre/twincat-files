@@ -1,0 +1,283 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+  <POU Name="T_CsvFileReader" Id="{f698c541-82b7-49fe-a39a-d5b39221df43}" SpecialFunc="None">
+    <Declaration><![CDATA[// Usage:
+// Call instance (i.e. ofbCsvRead();) every scan while waiting for operations to complete.
+// SetFileParams() Set the File directory and separator variable. 
+// GetFile() Get the File.
+// #various props: Observe the properties to see whether it passed the file checks.
+// NextField() Next through the fields of the CSV. 
+// #sField, Row, Column: Use properties to access values, using row and column.
+FUNCTION_BLOCK T_CsvFileReader
+VAR
+// state vars.
+	filePath : Tc2_Utilities.T_MaxString; // filepath
+	firstField : BOOL;
+	newRow : BOOL;
+	
+// backing properties	
+	_Row : UINT;(* Row number (record) *)
+	_Column : UINT;(* Column number (record field) *)
+	_Field : Tc2_Utilities.T_MaxString; // Field in current Row and column
+	
+// Objects	
+	fileRead : T_FileReadBase;(* Writes one record (line) *)
+	csvReader : Tc2_Utilities.FB_CSVMemBufferReader; // read bits
+	
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fileRead();
+
+
+
+
+
+]]></ST>
+    </Implementation>
+    <Folder Name="Methods" Id="{0ccf71fb-eff4-4971-bebb-f2db3f398075}" />
+    <Folder Name="Privates" Id="{c264b212-188f-492b-9d5d-cc8abd3f2e89}" />
+    <Folder Name="Properties" Id="{4d45de3b-a9fa-49c7-9cb2-a92c347c29b6}" />
+    <Property Name="Busy" Id="{e9ea1e4b-cede-4293-886f-61f164db727b}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Busy : BOOL]]></Declaration>
+      <Get Name="Get" Id="{57989dfa-9851-4490-aa99-6e15ec5883fd}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Busy := fileRead.Busy;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Column" Id="{ca30f05a-c748-4363-9377-6e46d303b8de}" FolderPath="Properties\">
+      <Declaration><![CDATA[PROPERTY PUBLIC Column : UINT]]></Declaration>
+      <Get Name="Get" Id="{549f03d3-34ec-453d-b404-8330c5f2ac87}">
+        <Declaration><![CDATA[
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Column := _Column;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Eof" Id="{737915ef-d04e-4ef5-8e6f-d5be621f917c}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Eof : BOOL]]></Declaration>
+      <Get Name="Get" Id="{a4c0e73e-a9aa-414b-a4e3-63b970de6ef0}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Eof := ReadyForParsing AND NOT csvReader.bOk AND NOT firstField;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Error" Id="{2b039a65-a40a-45e9-b0b5-d2b67227bfba}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Error : BOOL]]></Declaration>
+      <Get Name="Get" Id="{5c6173da-7291-4db9-b693-dc6cfd4bca7a}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Error := fileRead.Error;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="ErrorId" Id="{2f840b8b-6912-428f-8ae7-cf7a7bee0a56}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC ErrorId : UDINT]]></Declaration>
+      <Get Name="Get" Id="{e673318a-731c-4c2f-8177-20878d2a114a}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[ErrorId := fileRead.ErrorId;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Field" Id="{865fbe2a-be60-4449-8c53-c3605f20d429}" FolderPath="Properties\">
+      <Declaration><![CDATA[PROPERTY PUBLIC Field : String]]></Declaration>
+      <Get Name="Get" Id="{379e603a-abf4-4f3a-9b63-65a352852a0a}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Field := _Field;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="FileExists" Id="{ad4c90e6-6627-49b1-a78e-459af2bf1656}" FolderPath="Properties\">
+      <Declaration><![CDATA[PROPERTY PUBLIC FileExists : BOOL]]></Declaration>
+      <Get Name="Get" Id="{72b8f14d-75ba-47fa-b5bb-69df465c867b}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[FileExists := fileRead.FileExists;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="GetFile" Id="{0079e725-90d6-42fd-b668-4fea4a4f856b}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD PUBLIC GetFile]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[fileRead.StartRead();
+fileRead();
+_Column := 0;
+_Row := 0;
+_Field := '';
+firstField := TRUE;
+newRow := FALSE;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="incrementRowAndColumn" Id="{cf7aeecd-725d-46ac-bab5-43ab50603bc3}" FolderPath="Privates\">
+      <Declaration><![CDATA[METHOD PRIVATE incrementRowAndColumn
+
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF newRow THEN // if it's a new row (which we know from last time)
+	
+	newRow := FALSE;
+	_Row := _Row + 1;
+	_Column := 0;
+	
+ELSE
+	// if it's not the first read, advance column.
+	IF (csvReader.eCmd = Tc2_Utilities.eEnumCmd_First) THEN
+		_Column := 0;
+		_Row := 0;
+	ELSE
+		_Column := _Column + 1;
+	END_IF
+	
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="NextField" Id="{2069769d-95b0-4488-94ec-06795445d487}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD PUBLIC NextField// gets next field
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF firstField THEN
+	firstField := FALSE;
+	csvReader.eCmd :=  Tc2_Utilities.E_EnumCmdType.eEnumCmd_First;
+ELSE
+	csvReader.eCmd :=  Tc2_Utilities.E_EnumCmdType.eEnumCmd_Next;
+END_IF
+
+processCsvReader();
+
+// increment the column and row if necessary.
+IF csvReader.bOk THEN
+	incrementRowAndColumn();
+	
+END_IF
+
+// increment the row number next call if necessary.
+IF csvReader.bOk AND csvReader.bCRLF THEN
+	newRow := TRUE;
+END_IF
+
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="processCsvReader" Id="{19f24496-c709-448c-9747-2fc3b8ae16d2}" FolderPath="Privates\">
+      <Declaration><![CDATA[METHOD PRIVATE processCsvReader 
+// used in NextField();]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[csvReader(
+	pBuffer:= fileRead.DataBuffer,
+	cbBuffer:= fileRead.DataLength,
+	getValue=> _Field);]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="ReadyForParsing" Id="{6ac0ed30-b635-4e9e-8e69-3853e7ad9f06}" FolderPath="Properties\">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC ReadyForParsing : BOOL]]></Declaration>
+      <Get Name="Get" Id="{e158f41a-26cd-4222-a0f8-5f6c09312497}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[ReadyForParsing := fileRead.Done;
+]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Row" Id="{9c5a1564-789d-4eab-b829-6776c9f8ba8a}" FolderPath="Properties\">
+      <Declaration><![CDATA[PROPERTY PUBLIC Row : UINT]]></Declaration>
+      <Get Name="Get" Id="{a52f8176-f083-4b67-be53-4cd001530fae}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Row := _Row;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="SetFileParams" Id="{71df841a-242a-470f-b9d8-966ebc5a9863}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD PUBLIC SetFileParams
+VAR_INPUT
+	FilePath : Tc2_Utilities.T_MaxString;
+	Separator: BYTE; // Updates TC Utilities Global_Variables DEFAULT_CSV_FIELD_SEP
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// THIS^ references the base object properties
+THIS^.filePath := FilePath; // for debug only.
+
+fileRead.SetFilePath(FilePath := FilePath);
+
+// Validate separator.
+IF Separator = ASCI_SEMI_COLON THEN
+	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := 16#3B;
+	
+ELSIF Separator = ASCI_COMMA THEN
+	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := 16#3B;
+	
+ELSE
+	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := 16#3B;
+	
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="T_CsvFileReader">
+      <LineId Id="926" Count="5" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileReader.Busy.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileReader.Column.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileReader.Eof.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileReader.Error.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileReader.ErrorId.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileReader.Field.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileReader.FileExists.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileReader.GetFile">
+      <LineId Id="3" Count="6" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileReader.incrementRowAndColumn">
+      <LineId Id="3" Count="14" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileReader.NextField">
+      <LineId Id="3" Count="20" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileReader.processCsvReader">
+      <LineId Id="10" Count="2" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileReader.ReadyForParsing.Get">
+      <LineId Id="3" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileReader.Row.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileReader.SetFileParams">
+      <LineId Id="3" Count="14" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
