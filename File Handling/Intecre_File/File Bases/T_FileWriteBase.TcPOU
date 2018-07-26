@@ -15,7 +15,7 @@
  #various props: Observe for complete.
  *)
  
-FUNCTION_BLOCK T_FileWriteBase
+FUNCTION_BLOCK INTERNAL T_FileWriteBase
 VAR
 // backing properties
 	_FilePath : Tc2_Utilities.T_MaxString;

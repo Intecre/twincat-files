@@ -15,7 +15,7 @@
  use address and size indicated by DataBuffer and DataLength.
 *)
 
-FUNCTION_BLOCK T_FileReadBase
+FUNCTION_BLOCK INTERNAL T_FileReadBase
 VAR
 // backing properties
 	_FilePath : Tc2_Utilities.T_MaxString;
