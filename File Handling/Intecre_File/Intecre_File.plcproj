@@ -22,7 +22,7 @@
     <Placeholder>Intecre.File</Placeholder>
     <DocFormat>reStructuredText</DocFormat>
     <Company>Intecre Ltd</Company>
-    <ProjectVersion>0.1</ProjectVersion>
+    <ProjectVersion>0.1.1</ProjectVersion>
     <!--    <OutputType>Exe</OutputType>
     <RootNamespace>MyApplication</RootNamespace>
     <AssemblyName>MyApplication</AssemblyName>-->
