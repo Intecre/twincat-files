@@ -39,3 +39,4 @@ packages/
 *~u
 File Handling/SCI_File_Handling/_Libraries/beckhoff automation gmbh/
 *.tmcRefac
+*.libcat.xml

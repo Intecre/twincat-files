@@ -22,7 +22,18 @@
     <Placeholder>Intecre.File</Placeholder>
     <DocFormat>reStructuredText</DocFormat>
     <Company>Intecre Ltd</Company>
-    <ProjectVersion>0.1.1</ProjectVersion>
+    <LibraryCategories>
+      <LibraryCategory>
+        <Id>{d7292350-a6c3-11e8-98d0-529269fb1459}</Id>
+        <Version>1.0.0.0</Version>
+        <DefaultName>Intecre Ltd</DefaultName>
+      </LibraryCategory>
+    </LibraryCategories>
+    <SelectedLibraryCategories>
+      <Id>{d7292350-a6c3-11e8-98d0-529269fb1459}</Id>
+    </SelectedLibraryCategories>
+    <Description>0.1.2 - Added library category</Description>
+    <ProjectVersion>0.1.4</ProjectVersion>
     <!--    <OutputType>Exe</OutputType>
     <RootNamespace>MyApplication</RootNamespace>
     <AssemblyName>MyApplication</AssemblyName>-->
@@ -93,7 +104,7 @@
   </ItemGroup>
   <ItemGroup>
     <PlaceholderResolution Include="Intecre.Utilities">
-      <Resolution>Intecre.Utilities, 2.0.4.2 (Intecre Ltd)</Resolution>
+      <Resolution>Intecre.Utilities, * (Intecre Ltd)</Resolution>
     </PlaceholderResolution>
   </ItemGroup>
   <ProjectExtensions>
