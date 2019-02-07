@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.16">
   <POU Name="T_FileWriteBase" Id="{a17bb74f-1a47-4c10-8da3-0fab1596f8bf}" SpecialFunc="None">
     <Declaration><![CDATA[(* Usage:
  N.B. THIS CLASS DOES NOT CARE ABOUT THE DATA ADDED TO THE BUFFER.
@@ -37,10 +37,16 @@ VAR
 	FileBuffer : POINTER TO BYTE; // holds file contents
 	FileBufferSize : UDINT;
 	FileExtenderBuffer : POINTER TO BYTE; // use if buffer needs extending.
+
+	FileOpenMode : DWORD := FOPEN_MODEWRITE OR FOPEN_MODEBINARY; // Overwrite by deafault.
 	
 // State Enum
 	State : E_FileBaseStates := WaitForStart;
 	
+END_VAR
+VAR CONSTANT
+	FILE_OVERWRITE_MODE : DWORD := FOPEN_MODEWRITE OR FOPEN_MODEBINARY;
+	FILE_APPEND_MODE : DWORD := FOPEN_MODEAPPEND OR FOPEN_MODEBINARY;	
 END_VAR
 ]]></Declaration>
     <Implementation>
@@ -68,7 +74,7 @@ END_VAR
 		FileOpen( 
 			sNetId 		:= '', 
 			sPathName 	:= _FilePath,
-			nMode 		:= FOPEN_MODEWRITE OR FOPEN_MODEBINARY,
+			nMode 		:= FileOpenMode,
 			bExecute 	:= TRUE);
 		// Next Step
 		State := WaitForOpenComplete;
@@ -354,6 +360,16 @@ END_VAR
         <ST><![CDATA[ClearWriteBuffer();]]></ST>
       </Implementation>
     </Method>
+    <Method Name="SetFileOpenMode" Id="{1f3efdbf-1663-424c-9d7c-393d4401cb4c}">
+      <Declaration><![CDATA[METHOD SetFileOpenMode
+VAR_INPUT
+	Append : BOOL;  // TRUE = append, FALSE = new
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[FileOpenMode := SEL( Append , FILE_OVERWRITE_MODE, FILE_OVERWRITE_MODE );]]></ST>
+      </Implementation>
+    </Method>
     <Method Name="SetFilePath" Id="{373a3a21-25d5-4b8b-b64a-ddd9993ed119}">
       <Declaration><![CDATA[METHOD PUBLIC SetFilePath : BOOL
 VAR_INPUT
@@ -438,6 +454,9 @@ StartWrite := _Start;]]></ST>
       <LineId Id="6" Count="0" />
     </LineIds>
     <LineIds Name="T_FileWriteBase.FB_init">
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="T_FileWriteBase.SetFileOpenMode">
       <LineId Id="7" Count="0" />
     </LineIds>
     <LineIds Name="T_FileWriteBase.SetFilePath">

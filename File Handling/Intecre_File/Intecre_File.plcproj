@@ -14,8 +14,8 @@
     <Implicit_KindOfTask>{61ad1337-1dfc-4847-869b-f6bda69a5265}</Implicit_KindOfTask>
     <Implicit_Jitter_Distribution>{bef3ed24-c589-4b3f-8068-efeeef42bc1d}</Implicit_Jitter_Distribution>
     <LibraryReferences>{35b5d9f2-ba9c-4c0e-85bc-6f540050522e}</LibraryReferences>
-    <CombineIds>false</CombineIds>
-    <Released>false</Released>
+    <CombineIds>true</CombineIds>
+    <Released>true</Released>
     <Title>Intecre.File</Title>
     <DefaultNamespace>Intecre.File</DefaultNamespace>
     <Author>Mark Lazarides</Author>
@@ -32,8 +32,8 @@
     <SelectedLibraryCategories>
       <Id>{d7292350-a6c3-11e8-98d0-529269fb1459}</Id>
     </SelectedLibraryCategories>
-    <Description>0.1.2 - Added library category</Description>
-    <ProjectVersion>0.1.4</ProjectVersion>
+    <ProjectVersion>0.1.5</ProjectVersion>
+    <Description>0.1.5 - Add option to open for append</Description>
     <!--    <OutputType>Exe</OutputType>
     <RootNamespace>MyApplication</RootNamespace>
     <AssemblyName>MyApplication</AssemblyName>-->
