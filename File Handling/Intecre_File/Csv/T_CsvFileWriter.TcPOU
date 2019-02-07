@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.16">
   <POU Name="T_CsvFileWriter" Id="{1085c9eb-e997-446a-b003-e836d48add8e}" SpecialFunc="None">
     <Declaration><![CDATA[// Usage:
 // Call instance (i.e. ofbCsvRead();) every scan while waiting for operations to complete.
@@ -201,6 +201,16 @@ _Column := 0;
         </Implementation>
       </Get>
     </Property>
+    <Method Name="SetFileOpenMode" Id="{8d7b8c4d-f88e-0b52-2f50-d44a9e8cc99a}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD SetFileOpenMode
+VAR_INPUT
+	Append : BOOL;  // TRUE = append, FALSE = new
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[fileWrite.SetFileOpenMode( Append := Append );]]></ST>
+      </Implementation>
+    </Method>
     <Method Name="SetFileParams" Id="{6d2c1a3e-b8ca-4bf4-a258-44ae4a711c36}" FolderPath="Methods\">
       <Declaration><![CDATA[METHOD PUBLIC SetFileParams
 VAR_INPUT
@@ -291,6 +301,9 @@ fileWrite.StartWrite();
     </LineIds>
     <LineIds Name="T_CsvFileWriter.Row.Get">
       <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_CsvFileWriter.SetFileOpenMode">
+      <LineId Id="7" Count="0" />
     </LineIds>
     <LineIds Name="T_CsvFileWriter.SetFileParams">
       <LineId Id="3" Count="16" />
