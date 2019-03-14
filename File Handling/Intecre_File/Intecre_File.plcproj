@@ -32,8 +32,10 @@
     <SelectedLibraryCategories>
       <Id>{d7292350-a6c3-11e8-98d0-529269fb1459}</Id>
     </SelectedLibraryCategories>
-    <ProjectVersion>0.1.5</ProjectVersion>
-    <Description>0.1.5 - Add option to open for append</Description>
+    <Description>0.1.6 fixed separator value setting bug
+
+0.1.5 - Add option to open for append</Description>
+    <ProjectVersion>0.1.6</ProjectVersion>
     <!--    <OutputType>Exe</OutputType>
     <RootNamespace>MyApplication</RootNamespace>
     <AssemblyName>MyApplication</AssemblyName>-->

@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.16">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.17">
   <POU Name="T_CsvFileWriter" Id="{1085c9eb-e997-446a-b003-e836d48add8e}" SpecialFunc="None">
     <Declaration><![CDATA[// Usage:
 // Call instance (i.e. ofbCsvRead();) every scan while waiting for operations to complete.
@@ -208,7 +208,9 @@ VAR_INPUT
 END_VAR
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[fileWrite.SetFileOpenMode( Append := Append );]]></ST>
+        <ST><![CDATA[fileWrite.SetFileOpenMode( 
+	Append := Append
+);]]></ST>
       </Implementation>
     </Method>
     <Method Name="SetFileParams" Id="{6d2c1a3e-b8ca-4bf4-a258-44ae4a711c36}" FolderPath="Methods\">
@@ -216,9 +218,6 @@ END_VAR
 VAR_INPUT
 	FilePath : Tc2_Utilities.T_MaxString;
 	Separator: BYTE; // Updates TC Utilities Global_Variables DEFAULT_CSV_FIELD_SEP
-END_VAR
-VAR_INST
-	debugCount : INT;
 END_VAR
 VAR CONSTANT
 	ASCI_SEMI_COLON : BYTE := 16#3B;
@@ -233,32 +232,22 @@ fileWrite.SetFilePath(FilePath := FilePath);
 
 // Validate separator.
 IF Separator = ASCI_SEMI_COLON THEN
-	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := 16#3B;
+	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := ASCI_SEMI_COLON;
 	
 ELSIF Separator = ASCI_COMMA THEN
-	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := 16#3B;
+	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := ASCI_COMMA;
 	
 ELSE
 	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := 16#3B;
 	
-END_IF
-
-debugCount := debugCount + 1;]]></ST>
+END_IF]]></ST>
       </Implementation>
     </Method>
     <Method Name="WriteToFile" Id="{52b0a0ab-c039-44db-b778-31b0420765df}" FolderPath="Methods\">
       <Declaration><![CDATA[METHOD PUBLIC WriteToFile // Write Buffer to File. Calls "NewLine"() first.]]></Declaration>
       <Implementation>
-        <ST><![CDATA[IF Error THEN // Error looks at FileWrite.Error
-	RETURN;
-END_IF
-
-// always add final CRLF.
+        <ST><![CDATA[// always add final CRLF.
 NewLine();
-
-IF Error THEN // Error looks at FileWrite.Error
-	RETURN;
-END_IF
 
 fileWrite.StartWrite();
 ]]></ST>
@@ -304,13 +293,15 @@ fileWrite.StartWrite();
     </LineIds>
     <LineIds Name="T_CsvFileWriter.SetFileOpenMode">
       <LineId Id="7" Count="0" />
+      <LineId Id="15" Count="1" />
     </LineIds>
     <LineIds Name="T_CsvFileWriter.SetFileParams">
-      <LineId Id="3" Count="16" />
+      <LineId Id="3" Count="14" />
       <LineId Id="2" Count="0" />
     </LineIds>
     <LineIds Name="T_CsvFileWriter.WriteToFile">
-      <LineId Id="3" Count="11" />
+      <LineId Id="7" Count="1" />
+      <LineId Id="13" Count="1" />
       <LineId Id="2" Count="0" />
     </LineIds>
   </POU>

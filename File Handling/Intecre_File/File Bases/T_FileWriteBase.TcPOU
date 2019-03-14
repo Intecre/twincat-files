@@ -363,11 +363,11 @@ END_VAR
     <Method Name="SetFileOpenMode" Id="{1f3efdbf-1663-424c-9d7c-393d4401cb4c}">
       <Declaration><![CDATA[METHOD SetFileOpenMode
 VAR_INPUT
-	Append : BOOL;  // TRUE = append, FALSE = new
+	Append : BOOL;  // TRUE = append, FALSE = Over write
 END_VAR
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[FileOpenMode := SEL( Append , FILE_OVERWRITE_MODE, FILE_OVERWRITE_MODE );]]></ST>
+        <ST><![CDATA[FileOpenMode := SEL( Append , FILE_OVERWRITE_MODE, FILE_APPEND_MODE );]]></ST>
       </Implementation>
     </Method>
     <Method Name="SetFilePath" Id="{373a3a21-25d5-4b8b-b64a-ddd9993ed119}">
