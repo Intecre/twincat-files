@@ -1,0 +1,174 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.18">
+  <POU Name="T_StructToJsonFileWriter" Id="{fd59d0dd-3f9a-096c-1145-5dd2bb026d0f}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK T_StructToJsonFileWriter EXTENDS T_NamedBase
+VAR
+	filePath : STRING; // fully qualified, including directory
+	fileWrite : T_FileWriteBase;
+	jDoc : JsonDoc;
+	structureName : STRING; // i.e. 'ST_Recipe'
+	pointerToStructure : PVOID; // i.e. ADR(recipe)
+	sizeOfStructure : UDINT; // i.e. SIZEOF(recipe) 
+	jsonWriter : FB_JsonSaxWriter;
+	jsonDataTypeWriter : FB_JsonReadWriteDataType;
+	_error : BOOL;
+	_busy : BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fileWrite();
+_error S= fileWrite.Error;
+_busy := fileWrite.Busy;]]></ST>
+    </Implementation>
+    <Property Name="Busy" Id="{1850d0b4-67f1-0956-388d-78848d7d1e7e}">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call' }
+PROPERTY PUBLIC Busy : BOOL]]></Declaration>
+      <Get Name="Get" Id="{2665f752-0177-0ced-2048-525d127bc931}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Busy := _busy;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Error" Id="{640531db-ca33-03e3-08a6-c5eeaf8bf680}">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call' }
+PROPERTY PUBLIC Error : BOOL]]></Declaration>
+      <Get Name="Get" Id="{5830fbc2-b56e-027e-15d2-c0cca378a073}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Error := _error;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="Reset" Id="{06d5ff98-34b0-0099-10c5-d3a840205290}">
+      <Declaration><![CDATA[METHOD PUBLIC Reset]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[fileWrite.ClearWriteBuffer();
+jsonWriter.ResetDocument();
+_error := FALSE;
+LogDebug( 'Reset called' );]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetFileParams" Id="{7a8b72e9-c6b3-01da-10b6-970addc33cca}">
+      <Declaration><![CDATA[METHOD PUBLIC SetFileParams
+VAR_INPUT
+	FilePath : Tc2_Utilities.T_MaxString;
+	StructureName : STRING; // i.e. 'ST_Recipe'
+	PointerToStructure : PVOID; // i.e. ADR(recipe) 
+	SizeOfStructure : UDINT; // i.e. SIZEOF(recipe) 
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^.filePath := FilePath; // for debug only.
+fileWrite.SetFilePath(FilePath := FilePath);
+
+THIS^.structureName := StructureName;
+THIS^.pointerToStructure := PointerToStructure; 
+THIS^.sizeOfStructure := SizeOfStructure; ]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WriteToFile" Id="{2a0ecc25-7db0-06f7-3c64-41521e99da6c}">
+      <Declaration><![CDATA[METHOD PUBLIC WriteToFile // Attempt to write structure to file
+VAR
+	docSize : UDINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF _error THEN
+	LogError ( 'Cannot write to file while block is in an error state. Reset first' );
+	RETURN;
+	
+END_IF
+
+jsonWriter.ResetDocument();
+
+_error S= NOT jsonDataTypeWriter.AddJsonValueFromSymbol(
+						fbWriter := jsonWriter,
+						sDatatype := structureName,
+						nData := sizeOfStructure,
+						pData := pointerToStructure	
+					);
+				
+IF _error THEN
+	LogError ( 'Error while creating json file from structure. Check argument for SetFileParams' );
+	RETURN;
+	
+END_IF
+
+docSize := jsonWriter.CopyDocument(
+					pDoc := jDoc,
+					nDoc := SIZEOF( jDoc )
+				);
+
+fileWrite.ClearWriteBuffer();
+
+_error S= NOT fileWrite.AppendToBuffer(
+						pDataForBuffer := ADR( jdoc ),
+						DataLength := docSize
+					);
+
+IF _error THEN
+	LogError ( 'Error while adding to write buffer. Try increasing mailbox size.' );
+	RETURN;
+	
+END_IF		
+			
+_error S= NOT fileWrite.StartWrite();
+
+IF _error THEN
+	LogError ( 'Error  starting file write. Try calling Reset first.' );
+	RETURN;
+	
+END_IF	
+]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="T_StructToJsonFileWriter">
+      <LineId Id="9" Count="0" />
+      <LineId Id="20" Count="1" />
+    </LineIds>
+    <LineIds Name="T_StructToJsonFileWriter.Busy.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_StructToJsonFileWriter.Error.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_StructToJsonFileWriter.Reset">
+      <LineId Id="5" Count="0" />
+      <LineId Id="7" Count="2" />
+    </LineIds>
+    <LineIds Name="T_StructToJsonFileWriter.SetFileParams">
+      <LineId Id="4" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="2" Count="0" />
+      <LineId Id="28" Count="0" />
+    </LineIds>
+    <LineIds Name="T_StructToJsonFileWriter.WriteToFile">
+      <LineId Id="41" Count="0" />
+      <LineId Id="43" Count="2" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="46" Count="0" />
+      <LineId Id="17" Count="1" />
+      <LineId Id="8" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="19" Count="2" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="47" Count="4" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="24" Count="2" />
+      <LineId Id="32" Count="1" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="27" Count="2" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="52" Count="0" />
+      <LineId Id="54" Count="3" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="53" Count="0" />
+      <LineId Id="58" Count="5" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

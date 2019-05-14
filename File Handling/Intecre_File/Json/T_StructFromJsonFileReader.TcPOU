@@ -1,0 +1,162 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.18">
+  <POU Name="T_StructFromJsonFileReader" Id="{016623f6-0ecd-07dc-1a87-4776279e0b49}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK T_StructFromJsonFileReader EXTENDS T_NamedBase
+VAR
+	filePath : STRING; // fully qualified, including directory
+	fileRead : T_FileReadBase;
+	jDoc : JsonDoc;
+	structureName : STRING; // i.e. 'ST_Recipe'
+	pointerToStructure : PVOID; // i.e. ADR(recipe)
+	sizeOfStructure : UDINT; // i.e. SIZEOF(recipe) 
+	jsonDataTypeWriter : FB_JsonReadWriteDataType;
+	_error : BOOL;
+	_busy : BOOL;
+	_done : BOOL;
+	doneTrig : R_TRIG;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fileRead();
+_error S= fileRead.Error;
+_busy := fileRead.Busy;
+_done := fileRead.Done AND fileRead.BufferAvailable;
+
+
+doneTrig( CLK := _done );
+
+IF doneTrig.Q AND NOT _error THEN
+	// clear jDoc
+	MEMSET( ADR( jDoc ), 0, SIZEOF( jDoc ) );
+	
+	// get the data into the doc
+	MEMCPY(
+		destAddr := ADR( jDoc ),
+		srcAddr := fileRead.DataBuffer,
+		n := fileRead.DataLength
+	);
+	
+	// conver the doc to the structure
+	_error S= NOT jsonDataTypeWriter.SetSymbolFromJson(
+		sJson := jDoc,
+		sDatatype := structureName,
+		nData := sizeOfStructure,
+		pData := pointerToStructure
+	);
+
+END_IF]]></ST>
+    </Implementation>
+    <Property Name="Busy" Id="{4a4da27e-b4d5-0694-0f0a-993b08e51804}">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call' }
+PROPERTY PUBLIC Busy : BOOL]]></Declaration>
+      <Get Name="Get" Id="{5f53de3c-cdc2-073c-2e1d-45486d372afa}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Busy := _busy;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Error" Id="{ef5c5a2d-3d38-00a6-3b96-1f936bf87f33}">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call' }
+PROPERTY PUBLIC Error : BOOL]]></Declaration>
+      <Get Name="Get" Id="{0eb42b2d-cbf9-0d70-2903-f822c1680ea6}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Error := _error;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="ReadFromFile" Id="{07a81e8b-c4b9-0ac3-06f1-49b4bce3279b}">
+      <Declaration><![CDATA[METHOD ReadFromFile // start the read.
+
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF _error THEN
+	LogError ( 'Cannot read from file while block is in an error state. Reset first' );
+	RETURN;
+	
+END_IF
+
+_error S= NOT fileRead.StartRead();
+
+IF _error THEN
+	LogError ( 'ReadFromFile error, try Rest or wait until not busy' );
+	RETURN;
+	
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Reset" Id="{9526566b-fa8a-0559-3909-b287cebea629}">
+      <Declaration><![CDATA[METHOD PUBLIC Reset]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_error := FALSE;
+LogDebug( 'Reset called' );]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetFileParams" Id="{4a33faa7-9971-01fa-095a-8b3bf1caabd5}">
+      <Declaration><![CDATA[METHOD PUBLIC SetFileParams
+VAR_INPUT
+	FilePath : Tc2_Utilities.T_MaxString;
+	StructureName : STRING; // i.e. 'ST_Recipe'
+	PointerToStructure : PVOID; // i.e. ADR(recipe) 
+	SizeOfStructure : UDINT; // i.e. SIZEOF(recipe) 
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^.filePath := FilePath; // for debug only.
+fileRead.SetFilePath( FilePath := FilePath );
+
+THIS^.structureName := StructureName;
+THIS^.pointerToStructure := PointerToStructure; 
+THIS^.sizeOfStructure := SizeOfStructure; ]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="T_StructFromJsonFileReader">
+      <LineId Id="23" Count="1" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="30" Count="1" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="46" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="84" Count="0" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="78" Count="1" />
+      <LineId Id="81" Count="1" />
+      <LineId Id="80" Count="0" />
+      <LineId Id="57" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="47" Count="2" />
+      <LineId Id="51" Count="1" />
+      <LineId Id="54" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="28" Count="0" />
+    </LineIds>
+    <LineIds Name="T_StructFromJsonFileReader.Busy.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_StructFromJsonFileReader.Error.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_StructFromJsonFileReader.ReadFromFile">
+      <LineId Id="7" Count="3" />
+      <LineId Id="6" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="13" Count="4" />
+      <LineId Id="12" Count="0" />
+    </LineIds>
+    <LineIds Name="T_StructFromJsonFileReader.Reset">
+      <LineId Id="8" Count="1" />
+    </LineIds>
+    <LineIds Name="T_StructFromJsonFileReader.SetFileParams">
+      <LineId Id="4" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="2" Count="0" />
+      <LineId Id="28" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

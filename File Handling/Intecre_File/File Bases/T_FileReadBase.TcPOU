@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.18">
   <POU Name="T_FileReadBase" Id="{0b68f5a6-75d9-48fc-a3e8-9282459b65be}" SpecialFunc="None">
     <Declaration><![CDATA[(*Usage:
  N.B. FILE BUFFER IS STORED IN THIS OBJECT, IN MEMORY.  DO NOT DO ACCESS ANOTHER FILE
@@ -247,6 +247,9 @@ END_VAR]]></Declaration>
 	E_FileBaseStates.FinishAndCleanup: 
 		
 		_Done := TRUE;
+		IF NOT _error THEN
+			storeDataBufferAddressAndSizeIfValid();
+		END_IF
 		State := SEL(FileHandle <> 0, WaitForStart, CloseFile);
 		
 	ELSE // Error if we get here. Tidy up if we do.
@@ -412,7 +415,7 @@ StartRead := _Start;]]></ST>
 
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[_DataBuffer := ADR(FileBuffer);
+        <ST><![CDATA[_DataBuffer := FileBuffer;
 _DataLength := FileBufferSize;
 ]]></ST>
       </Implementation>
@@ -420,7 +423,9 @@ _DataLength := FileBufferSize;
     <LineIds Name="T_FileReadBase">
       <LineId Id="8871" Count="12" />
       <LineId Id="8888" Count="159" />
-      <LineId Id="9061" Count="35" />
+      <LineId Id="9061" Count="26" />
+      <LineId Id="9141" Count="2" />
+      <LineId Id="9088" Count="8" />
       <LineId Id="9" Count="0" />
     </LineIds>
     <LineIds Name="T_FileReadBase.BufferAvailable.Get">
