@@ -13,6 +13,7 @@ VAR
 	_error : BOOL;
 	_busy : BOOL;
 	_done : BOOL;
+	_fileExists : BOOL;
 	doneTrig : R_TRIG;
 END_VAR
 ]]></Declaration>
@@ -21,7 +22,7 @@ END_VAR
 _error S= fileRead.Error;
 _busy := fileRead.Busy;
 _done := fileRead.Done AND fileRead.BufferAvailable;
-
+_fileExists := fileRead.FileExists;
 
 doneTrig( CLK := _done );
 
@@ -56,6 +57,16 @@ PROPERTY PUBLIC Busy : BOOL]]></Declaration>
         </Implementation>
       </Get>
     </Property>
+    <Property Name="Done" Id="{5399fb37-82ba-0415-11f9-314370e9e75d}">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call' }
+PROPERTY PUBLIC Done : BOOL]]></Declaration>
+      <Get Name="Get" Id="{af18cdd6-2c2a-0ab1-0613-ebf6e8dbafa2}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Done := _done;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
     <Property Name="Error" Id="{ef5c5a2d-3d38-00a6-3b96-1f936bf87f33}">
       <Declaration><![CDATA[{attribute 'monitoring' := 'call' }
 PROPERTY PUBLIC Error : BOOL]]></Declaration>
@@ -63,6 +74,16 @@ PROPERTY PUBLIC Error : BOOL]]></Declaration>
         <Declaration><![CDATA[]]></Declaration>
         <Implementation>
           <ST><![CDATA[Error := _error;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="FileExists" Id="{2283cf80-96f4-04bc-12ac-a182f3cd8ddd}">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC FileExists : BOOL]]></Declaration>
+      <Get Name="Get" Id="{3332bbdb-c463-058e-3f44-622bc70cd6a1}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[FileExists := _fileExists;]]></ST>
         </Implementation>
       </Get>
     </Property>
@@ -136,7 +157,13 @@ THIS^.sizeOfStructure := SizeOfStructure; ]]></ST>
     <LineIds Name="T_StructFromJsonFileReader.Busy.Get">
       <LineId Id="2" Count="0" />
     </LineIds>
+    <LineIds Name="T_StructFromJsonFileReader.Done.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
     <LineIds Name="T_StructFromJsonFileReader.Error.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_StructFromJsonFileReader.FileExists.Get">
       <LineId Id="2" Count="0" />
     </LineIds>
     <LineIds Name="T_StructFromJsonFileReader.ReadFromFile">

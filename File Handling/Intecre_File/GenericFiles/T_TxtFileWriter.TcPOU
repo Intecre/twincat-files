@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.18">
   <POU Name="T_TxtFileWriter" Id="{7877d6c4-ac8f-4f51-9d97-6af63fe863ea}" SpecialFunc="None">
     <Declaration><![CDATA[// Usage:
 // Call instance every scan while waiting for operations to complete.
@@ -144,6 +144,18 @@ PROPERTY PUBLIC Row : UINT]]></Declaration>
         </Implementation>
       </Get>
     </Property>
+    <Method Name="SetFileOpenMode" Id="{1153eed4-a1d5-05ce-3b75-e636b5cbc4f1}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD SetFileOpenMode
+VAR_INPUT
+	Append : BOOL;  // TRUE = append, FALSE = new
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[fileWrite.SetFileOpenMode( 
+	Append := Append
+);]]></ST>
+      </Implementation>
+    </Method>
     <Method Name="SetFileParams" Id="{78577382-50fd-4e7d-96af-2c5f86f38a31}" FolderPath="Methods\">
       <Declaration><![CDATA[// Set the fully scoped file path *i.e. C:/Users/TwinCAT_User/MyText.txt
 METHOD PUBLIC SetFileParams
@@ -233,6 +245,10 @@ fileWrite.StartWrite();
     </LineIds>
     <LineIds Name="T_TxtFileWriter.Row.Get">
       <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_TxtFileWriter.SetFileOpenMode">
+      <LineId Id="7" Count="0" />
+      <LineId Id="15" Count="1" />
     </LineIds>
     <LineIds Name="T_TxtFileWriter.SetFileParams">
       <LineId Id="4" Count="2" />

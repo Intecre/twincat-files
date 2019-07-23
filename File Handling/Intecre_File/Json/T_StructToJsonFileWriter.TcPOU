@@ -13,12 +13,14 @@ VAR
 	jsonDataTypeWriter : FB_JsonReadWriteDataType;
 	_error : BOOL;
 	_busy : BOOL;
+	_done : BOOL;
 END_VAR
 ]]></Declaration>
     <Implementation>
       <ST><![CDATA[fileWrite();
 _error S= fileWrite.Error;
-_busy := fileWrite.Busy;]]></ST>
+_busy := fileWrite.Busy;
+_done := fileWrite.Done;]]></ST>
     </Implementation>
     <Property Name="Busy" Id="{1850d0b4-67f1-0956-388d-78848d7d1e7e}">
       <Declaration><![CDATA[{attribute 'monitoring' := 'call' }
@@ -27,6 +29,16 @@ PROPERTY PUBLIC Busy : BOOL]]></Declaration>
         <Declaration><![CDATA[]]></Declaration>
         <Implementation>
           <ST><![CDATA[Busy := _busy;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Done" Id="{1bb13495-e23b-063e-04bc-28359a31cd2a}">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call' }
+PROPERTY PUBLIC Done : BOOL]]></Declaration>
+      <Get Name="Get" Id="{7b67d981-310f-09fd-1269-613ba87d81b6}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Done := _done;]]></ST>
         </Implementation>
       </Get>
     </Property>
@@ -106,7 +118,7 @@ _error S= NOT fileWrite.AppendToBuffer(
 					);
 
 IF _error THEN
-	LogError ( 'Error while adding to write buffer. Try increasing mailbox size.' );
+	LogError ( 'Error while adding to write buffer. Try increasing JsonDoc size using JsonParams in library, or TC mailbox size.' );
 	RETURN;
 	
 END_IF		
@@ -124,8 +136,12 @@ END_IF
     <LineIds Name="T_StructToJsonFileWriter">
       <LineId Id="9" Count="0" />
       <LineId Id="20" Count="1" />
+      <LineId Id="35" Count="0" />
     </LineIds>
     <LineIds Name="T_StructToJsonFileWriter.Busy.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_StructToJsonFileWriter.Done.Get">
       <LineId Id="2" Count="0" />
     </LineIds>
     <LineIds Name="T_StructToJsonFileWriter.Error.Get">
