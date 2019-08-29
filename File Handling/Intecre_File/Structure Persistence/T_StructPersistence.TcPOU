@@ -1,0 +1,202 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.0">
+  <POU Name="T_StructPersistence" Id="{fa44e264-3def-0f0f-2034-547416afe544}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK T_StructPersistence
+VAR_INPUT
+	AddressOfStruct : PVOID;
+	SizeOfStruct : UDINT;
+	NameOfStructureType : STRING; // eg ST_Recipe; NOT the instance name!
+	FilePath : STRING; // location to store this
+	Options : ST_PersistenceOptions;
+END_VAR
+VAR_OUTPUT
+	ReadSuccess : BOOL;
+	WriteSuccess : BOOL;
+	FileCreated : BOOL; // if the file is written without a valid file having been read first. 
+END_VAR
+VAR
+	toFile : T_StructToJsonFileWriter;
+	fromFile : T_StructFromJsonFileReader;
+	lastGoodCrc : WORD; // the crc of the last file. Used for diff.
+	currStructCrc, prevCheckStructCrc : WORD;
+	diffCheckTimer : TON;
+	diffCheckDebouncing : BOOL;
+	diffDebounceTimer : TON;
+	
+	firstWriteSuccess : SR;
+	firstSuccessTrig : R_TRIG;
+	
+	state : E_StructPersistenceStates;
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE state OF
+	E_StructPersistenceStates.None :
+		state := E_StructPersistenceStates.Initialise;
+	
+	E_StructPersistenceStates.Initialise :
+	
+		toFile.SetFileParams(
+			FilePath := FilePath,
+			StructureName := NameOfStructureType,
+			PointerToStructure := AddressOfStruct,
+			SizeOfStructure := SizeOfStruct
+		);
+		
+		fromFile.SetFileParams(
+			FilePath := FilePath,
+			StructureName := NameOfStructureType,
+			PointerToStructure := AddressOfStruct,
+			SizeOfStructure := SizeOfStruct
+		);
+		
+		toFile.Reset();
+		fromFile.Reset();
+		
+		state := E_StructPersistenceStates.ReadFromFile;
+		
+	E_StructPersistenceStates.Wait :
+		; // advanced elsewhere
+	
+	E_StructPersistenceStates.ReadFromFile :
+	
+		fromFile.ReadFromFile();
+		state := E_StructPersistenceStates.WaitForReadComplete;
+		 
+	E_StructPersistenceStates.WaitForReadComplete :
+		
+		ReadSuccess := fromFile.Done;
+		
+		IF NOT fromFile.Busy THEN
+			
+			IF ReadSuccess THEN 
+				// record crc for diff checks	
+				lastGoodCrc := getStructCrc();
+				
+			END_IF
+			
+			// if no file found, check whether to auto create (option).
+			state := 
+				SEL( NOT fromFile.FileExists AND Options.CreateFileIfDoesntExist, E_StructPersistenceStates.Wait, E_StructPersistenceStates.WriteToFile );	
+			
+			fromFile.Reset();
+			
+		END_IF
+		
+	E_StructPersistenceStates.WriteToFile :
+	
+		tofile.WriteToFile();
+		state := E_StructPersistenceStates.WaitForWriteComplete;
+		
+	E_StructPersistenceStates.WaitForWriteComplete :
+	
+		WriteSuccess := toFile.Done;
+		
+		IF NOT toFile.Busy THEN
+			
+			IF WriteSuccess THEN
+				// get the crc of the file as it's written. this allows checking for diff.			
+				lastGoodCrc := getStructCrc();
+				
+			END_IF
+			
+			toFile.Reset();
+			state := E_StructPersistenceStates.Wait;
+			
+		END_IF
+
+END_CASE
+
+// run file handlers
+toFile();
+fromFile();
+
+firstWriteSuccess( SET1 := WriteSuccess );
+firstSuccessTrig( CLK := firstWriteSuccess.Q1 );
+FileCreated S= firstSuccessTrig.Q AND NOT fromFile.FileExists;
+
+// below is auto persistence, based on the "Options" imput.
+
+// check for difference
+diffCheckTimer( 
+	IN := Options.AutoWriteOnDifference AND NOT diffCheckTimer.Q AND NOT diffCheckDebouncing, 
+	PT := Options.AutoWriteCheckTime
+);
+
+IF diffCheckTimer.Q THEN
+	currStructCrc := getStructCrc();
+	diffCheckDebouncing := ( lastGoodCrc <> currStructCrc );
+	
+END_IF
+
+// once a difference has been detected, debounce changes to the struct before writing to file
+diffDebounceTimer( 
+	IN := diffCheckDebouncing AND NOT diffDebounceTimer.Q,
+	PT := Options.AutoWriteDebounceTime
+);
+
+// when no more changes to the file, write.
+IF diffDebounceTimer.Q THEN
+	
+ 	prevCheckStructCrc := currStructCrc;
+	currStructCrc := getStructCrc();
+	
+	// wait for struct to show no change since last debounce check
+	diffCheckDebouncing := ( currStructCrc <> prevCheckStructCrc ) AND ( state = E_StructPersistenceStates.Wait );
+	
+	// when struct stops changing, 
+	IF NOT diffCheckDebouncing THEN
+		state := E_StructPersistenceStates.WriteToFile;		
+		
+	END_IF
+	
+END_IF
+]]></ST>
+    </Implementation>
+    <Method Name="getStructCrc" Id="{eaae8d1f-3855-0250-22ee-e1c03470bbe5}">
+      <Declaration><![CDATA[METHOD PRIVATE getStructCrc : WORD]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[getStructCrc := 
+	F_DATA_TO_CRC16_CCITT(
+		pData := AddressOfStruct,
+		cbData := SizeOfStruct,
+		crc := 16#FFFF // seed the CRC
+	);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ReadFromFile" Id="{b55be508-9256-0e69-038f-f41513b93e5d}">
+      <Declaration><![CDATA[METHOD PUBLIC ReadFromFile : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF state <> E_StructPersistenceStates.Wait THEN
+	RETURN;
+END_IF
+
+ReadFromFile := TRUE;
+ReadSuccess := FALSE;
+WriteSuccess := FALSE;
+FileCreated := FALSE;
+
+state := E_StructPersistenceStates.ReadFromFile;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WriteToFile" Id="{77e436f2-3299-048e-26fd-a8154914d426}">
+      <Declaration><![CDATA[METHOD PUBLIC WriteToFile : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF state <> E_StructPersistenceStates.Wait THEN
+	RETURN;
+END_IF
+
+WriteToFile := TRUE;
+
+ReadSuccess := FALSE;
+WriteSuccess := FALSE;
+FileCreated := FALSE;
+
+state := E_StructPersistenceStates.WriteToFile;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

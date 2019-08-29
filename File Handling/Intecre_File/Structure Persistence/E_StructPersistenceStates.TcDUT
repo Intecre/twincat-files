@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.0">
+  <DUT Name="E_StructPersistenceStates" Id="{a8141b50-a3c9-0193-3fd6-8dc077c45ed4}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+TYPE E_StructPersistenceStates :
+(
+	None,
+	Initialise,
+	Wait,
+	ReadFromFile,
+	WaitForReadComplete,
+	WriteToFile,
+	WaitForWriteComplete,
+	Finished
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

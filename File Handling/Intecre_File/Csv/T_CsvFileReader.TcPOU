@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.12">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.0">
   <POU Name="T_CsvFileReader" Id="{f698c541-82b7-49fe-a39a-d5b39221df43}" SpecialFunc="None">
     <Declaration><![CDATA[// Usage:
 // Call instance (i.e. ofbCsvRead();) every scan while waiting for operations to complete.
@@ -216,68 +216,16 @@ fileRead.SetFilePath(FilePath := FilePath);
 
 // Validate separator.
 IF Separator = ASCI_SEMI_COLON THEN
-	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := 16#3B;
+	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := ASCI_SEMI_COLON;
 	
 ELSIF Separator = ASCI_COMMA THEN
-	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := 16#3B;
+	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := ASCI_COMMA;
 	
 ELSE
-	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := 16#3B;
+	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := ASCI_SEMI_COLON;
 	
 END_IF]]></ST>
       </Implementation>
     </Method>
-    <LineIds Name="T_CsvFileReader">
-      <LineId Id="926" Count="5" />
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileReader.Busy.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileReader.Column.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileReader.Eof.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileReader.Error.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileReader.ErrorId.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileReader.Field.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileReader.FileExists.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileReader.GetFile">
-      <LineId Id="3" Count="6" />
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileReader.incrementRowAndColumn">
-      <LineId Id="3" Count="14" />
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileReader.NextField">
-      <LineId Id="3" Count="20" />
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileReader.processCsvReader">
-      <LineId Id="10" Count="2" />
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileReader.ReadyForParsing.Get">
-      <LineId Id="3" Count="0" />
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileReader.Row.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileReader.SetFileParams">
-      <LineId Id="3" Count="14" />
-      <LineId Id="2" Count="0" />
-    </LineIds>
   </POU>
 </TcPlcObject>

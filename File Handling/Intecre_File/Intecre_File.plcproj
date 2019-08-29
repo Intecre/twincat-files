@@ -15,7 +15,7 @@
     <Implicit_Jitter_Distribution>{bef3ed24-c589-4b3f-8068-efeeef42bc1d}</Implicit_Jitter_Distribution>
     <LibraryReferences>{35b5d9f2-ba9c-4c0e-85bc-6f540050522e}</LibraryReferences>
     <CombineIds>true</CombineIds>
-    <Released>true</Released>
+    <Released>false</Released>
     <Title>Intecre.File</Title>
     <DefaultNamespace>Intecre.File</DefaultNamespace>
     <Author>Mark Lazarides</Author>
@@ -32,12 +32,11 @@
     <SelectedLibraryCategories>
       <Id>{d7292350-a6c3-11e8-98d0-529269fb1459}</Id>
     </SelectedLibraryCategories>
-    <Description>0.2.3 adding file open method to generic file
+    <Description>1.0.5 Increased JDOC size.
 
-0.2.2. adding file exists to json handler
-0.2.1 improving error message to aid solution
-0.2.0 adding struct to json read and write</Description>
-    <ProjectVersion>0.2.3</ProjectVersion>
+1.0.4 Fixed bug in assigning CSV separator for CsvReader
+1.0.3 Clear Read and Write Success flags on struct persistence when req'd.</Description>
+    <ProjectVersion>1.0.5</ProjectVersion>
     <!--    <OutputType>Exe</OutputType>
     <RootNamespace>MyApplication</RootNamespace>
     <AssemblyName>MyApplication</AssemblyName>-->
@@ -47,6 +46,7 @@
     <Folder Include="File Bases" />
     <Folder Include="GenericFiles" />
     <Folder Include="Json" />
+    <Folder Include="Structure Persistence" />
     <Folder Include="Utilities" />
     <Folder Include="Version" />
   </ItemGroup>
@@ -92,6 +92,18 @@
     <Compile Include="Param.TcGVL">
       <SubType>Code</SubType>
       <LinkAlways>true</LinkAlways>
+    </Compile>
+    <Compile Include="Structure Persistence\E_StructPersistenceStates.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Structure Persistence\ST_PersistenceOptions.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Structure Persistence\T_StructPersistence.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Utilities\E_CheckFileExistsStates.TcDUT">
+      <SubType>Code</SubType>
     </Compile>
     <Compile Include="Utilities\T_CheckFileExists.TcPOU">
       <SubType>Code</SubType>

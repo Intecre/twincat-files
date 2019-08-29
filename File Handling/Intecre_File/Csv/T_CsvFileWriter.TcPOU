@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.17">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.0">
   <POU Name="T_CsvFileWriter" Id="{1085c9eb-e997-446a-b003-e836d48add8e}" SpecialFunc="None">
     <Declaration><![CDATA[// Usage:
 // Call instance (i.e. ofbCsvRead();) every scan while waiting for operations to complete.
@@ -238,7 +238,7 @@ ELSIF Separator = ASCI_COMMA THEN
 	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := ASCI_COMMA;
 	
 ELSE
-	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := 16#3B;
+	Tc2_Utilities.DEFAULT_CSV_FIELD_SEP := ASCI_SEMI_COLON;
 	
 END_IF]]></ST>
       </Implementation>
@@ -253,56 +253,5 @@ fileWrite.StartWrite();
 ]]></ST>
       </Implementation>
     </Method>
-    <LineIds Name="T_CsvFileWriter">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileWriter.AddStringField">
-      <LineId Id="3" Count="30" />
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileWriter.BufferClear.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileWriter.Busy.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileWriter.ClearBuffer">
-      <LineId Id="3" Count="4" />
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileWriter.Column.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileWriter.Done.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileWriter.Error.Get">
-      <LineId Id="3" Count="0" />
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileWriter.ErrorId.Get">
-      <LineId Id="3" Count="0" />
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileWriter.NewLine">
-      <LineId Id="3" Count="29" />
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileWriter.Row.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileWriter.SetFileOpenMode">
-      <LineId Id="7" Count="0" />
-      <LineId Id="15" Count="1" />
-    </LineIds>
-    <LineIds Name="T_CsvFileWriter.SetFileParams">
-      <LineId Id="3" Count="14" />
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CsvFileWriter.WriteToFile">
-      <LineId Id="7" Count="1" />
-      <LineId Id="13" Count="1" />
-      <LineId Id="2" Count="0" />
-    </LineIds>
   </POU>
 </TcPlcObject>

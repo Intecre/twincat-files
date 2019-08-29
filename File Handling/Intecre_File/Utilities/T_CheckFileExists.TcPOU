@@ -9,35 +9,31 @@ VAR
 	start : BOOL;
 	_fileExists : BOOL; 
 	
-	state : (
-		WaitForStart,
-		WaitForOpenResult,
-		CloseIfOpened
-	);
+	state : E_CheckFileExistsStates;
 	
 END_VAR
 ]]></Declaration>
     <Implementation>
       <ST><![CDATA[CASE state OF
 	
-	WaitForStart : 
+	E_CheckFileExistsStates.WaitForStart : 
 	
 		IF start THEN
 			 _fileExists := FALSE;
-			 state := WaitForOpenResult;
+			 state := E_CheckFileExistsStates.WaitForOpenResult;
 			 start := FALSE;
 		END_IF
 		
-	WaitForOpenResult : 
+	E_CheckFileExistsStates.WaitForOpenResult : 
 	
 		IF NOT fileOpen.bBusy THEN
-			state := SEL( fileOpen.bError, CloseIfOpened, WaitForStart );		
+			state := SEL( fileOpen.bError, E_CheckFileExistsStates.CloseIfOpened, E_CheckFileExistsStates.WaitForStart );		
 		END_IF
 		
-	CloseIfOpened : 
+	E_CheckFileExistsStates.CloseIfOpened : 
 	
 		IF NOT fileClose.bBusy THEN
-			state := WaitForStart;		
+			state := E_CheckFileExistsStates.WaitForStart;		
 		END_IF
 		
 END_CASE
@@ -45,16 +41,16 @@ END_CASE
 fileOpen(
 	sNetId 		:= '', 
 	nMode 		:= FOPEN_MODEREAD,
-	bExecute 	:= state = WaitForOpenResult
+	bExecute 	:= state = E_CheckFileExistsStates.WaitForOpenResult
 );
 	
 fileClose( 
 	sNetId := '', 
    hFile := fileOpen.hFile,
-	bExecute := state = CloseIfOpened
+	bExecute := state = E_CheckFileExistsStates.CloseIfOpened
 );
 	
-_fileExists S= state = CloseIfOpened;
+_fileExists S= state = E_CheckFileExistsStates.CloseIfOpened;
 
 ]]></ST>
     </Implementation>
@@ -65,7 +61,7 @@ PROPERTY Busy : BOOL]]></Declaration>
         <Declaration><![CDATA[]]></Declaration>
         <Implementation>
           <ST><![CDATA[Busy := 
-	start OR ( state <> WaitForStart );]]></ST>
+	start OR ( state <> E_CheckFileExistsStates.WaitForStart );]]></ST>
         </Implementation>
       </Get>
     </Property>

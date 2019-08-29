@@ -1,9 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.18">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.0">
   <GVL Name="JsonParams" Id="{3c28810a-524c-0a2f-1bee-f320d4d811be}" ParameterList="True">
     <Declaration><![CDATA[{attribute 'qualified_only'}
 VAR_GLOBAL CONSTANT
-	JSON_DOC_SIZE : UINT := 10000; // make this large enough for your largest structure. Add at least 20% to the byte size to account for json syntax.
+	JSON_DOC_SIZE : UDINT := 10000; // make this large enough for your largest structure. Add at least 20% to the byte size to account for json syntax.
 END_VAR]]></Declaration>
   </GVL>
 </TcPlcObject>
