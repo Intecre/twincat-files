@@ -1,12 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.0">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.4">
   <POU Name="T_StructPersistence" Id="{fa44e264-3def-0f0f-2034-547416afe544}" SpecialFunc="None">
     <Declaration><![CDATA[FUNCTION_BLOCK T_StructPersistence
 VAR_INPUT
-	AddressOfStruct : PVOID;
-	SizeOfStruct : UDINT;
-	NameOfStructureType : STRING; // eg ST_Recipe; NOT the instance name!
-	FilePath : STRING; // location to store this
 	Options : ST_PersistenceOptions;
 END_VAR
 VAR_OUTPUT
@@ -38,17 +34,17 @@ END_VAR
 	E_StructPersistenceStates.Initialise :
 	
 		toFile.SetFileParams(
-			FilePath := FilePath,
-			StructureName := NameOfStructureType,
-			PointerToStructure := AddressOfStruct,
-			SizeOfStructure := SizeOfStruct
+			FilePath := Options.FilePath,
+			StructureName :=	Options.NameOfStructureType,
+			PointerToStructure := Options.AddressOfStruct,
+			SizeOfStructure := Options.SizeOfStruct
 		);
 		
 		fromFile.SetFileParams(
-			FilePath := FilePath,
-			StructureName := NameOfStructureType,
-			PointerToStructure := AddressOfStruct,
-			SizeOfStructure := SizeOfStruct
+			FilePath := Options.FilePath,
+			StructureName := Options.NameOfStructureType,
+			PointerToStructure := Options.AddressOfStruct,
+			SizeOfStructure := Options.SizeOfStruct
 		);
 		
 		toFile.Reset();
@@ -159,8 +155,8 @@ END_IF
       <Implementation>
         <ST><![CDATA[getStructCrc := 
 	F_DATA_TO_CRC16_CCITT(
-		pData := AddressOfStruct,
-		cbData := SizeOfStruct,
+		pData := Options.AddressOfStruct,
+		cbData := Options.SizeOfStruct,
 		crc := 16#FFFF // seed the CRC
 	);]]></ST>
       </Implementation>
@@ -198,5 +194,21 @@ FileCreated := FALSE;
 state := E_StructPersistenceStates.WriteToFile;]]></ST>
       </Implementation>
     </Method>
+    <LineIds Name="T_StructPersistence">
+      <LineId Id="3" Count="120" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_StructPersistence.getStructCrc">
+      <LineId Id="3" Count="4" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_StructPersistence.ReadFromFile">
+      <LineId Id="3" Count="8" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="T_StructPersistence.WriteToFile">
+      <LineId Id="3" Count="9" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
   </POU>
 </TcPlcObject>

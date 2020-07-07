@@ -1,8 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.0">
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.4">
   <DUT Name="ST_PersistenceOptions" Id="{5a3ec772-44c2-083f-3dc8-78fa292e5667}">
     <Declaration><![CDATA[TYPE ST_PersistenceOptions :
 STRUCT
+	AddressOfStruct : PVOID;
+	SizeOfStruct : UDINT;
+	NameOfStructureType : STRING; // eg ST_Recipe; NOT the instance name!
+	FilePath : STRING; // location to store this
 	CreateFileIfDoesntExist : BOOL := TRUE; // if read fails, try a write.
 	AutoWriteOnDifference : BOOL := TRUE; // if difference between
 	AutoWriteCheckTime : TIME := T#2M; // how often to check for difference
