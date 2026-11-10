@@ -31,17 +31,25 @@
     <SelectedLibraryCategories>
       <Id>{d7292350-a6c3-11e8-98d0-529269fb1459}</Id>
     </SelectedLibraryCategories>
-    <Description>1.3.0.0 - TwinCAT 4026 release with unit tests and a TcPkg package.
-  - TestRunner PLC project added to the solution: TcUnit suites for every public function block, run on the usermode runtime.
-  - Published as a .library and as a TcPkg package (Intecre.File) with Intecre.Utilities and the Beckhoff library packages as dependencies.
-  - Tc3_JsonXml no longer pinned to 3.3.4.0.
+    <Description>1.3.1.0 - JSON file fixes and a user guide.
+- T_StructFromJsonFileReader refuses a file longer than JsonParams.JSON_DOC_SIZE: it sets Error and logs both sizes, instead of overwriting its own settings.
+- T_StructToJsonFileWriter no longer writes the terminating NUL at the end of the file.
+- T_CheckFileExists.Check takes a T_MaxString path again (the 1.2.0 fix had not reached the source).
+- User guide: docs/user-guide.html in the repository.
+
+1.3.0.0 (not released; shipped in 1.3.1.0) - TwinCAT 4026 project with unit tests and a TcPkg package.
+- TestRunner PLC project added to the solution: TcUnit suites for every public function block, run on the usermode runtime.
+- Published as a .library and as a TcPkg package (Intecre.File) with Intecre.Utilities and the Beckhoff library packages as dependencies.
+- Tc3_JsonXml no longer pinned to 3.3.4.0.
+
+1.2.0 T_CheckFileExists.Check takes a T_MaxString path, so paths longer than 80 characters work.
 
 1.1.0 simplified interface for T_StructurePersistence
 
 1.0.5 Increased JDOC size.
 1.0.4 Fixed bug in assigning CSV separator for CsvReader
 1.0.3 Clear Read and Write Success flags on struct persistence when req'd.</Description>
-    <ProjectVersion>1.3.0.0</ProjectVersion>
+    <ProjectVersion>1.3.1.0</ProjectVersion>
     <POUsForPropertyAccessIncluded>true</POUsForPropertyAccessIncluded>
     <GlobalVersionStructureIncluded>true</GlobalVersionStructureIncluded>
   </PropertyGroup>

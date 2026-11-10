@@ -31,7 +31,7 @@ END_VAR
         <ST><![CDATA[TcUnit.TEST(__POUNAME());
 
 version := Intecre_File.F_GetVersion();
-AssertEquals_STRING(Expected := '1.3.0.0', Actual := version.sVersion, Message := 'library version string');
+AssertEquals_STRING(Expected := '1.3.1.0', Actual := version.sVersion, Message := 'library version string');
 AssertEquals_UINT(Expected := 1, Actual := version.iMajor, Message := 'major version');
 AssertEquals_UINT(Expected := 3, Actual := version.iMinor, Message := 'minor version');
 
