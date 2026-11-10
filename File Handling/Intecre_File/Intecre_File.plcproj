@@ -31,7 +31,16 @@
     <SelectedLibraryCategories>
       <Id>{d7292350-a6c3-11e8-98d0-529269fb1459}</Id>
     </SelectedLibraryCategories>
-    <Description>1.3.1.0 - JSON file fixes and a user guide.
+    <Description>1.4.0.0 - Fixes for the known issues listed in the 1.3.1.0 user guide.
+- ST_PersistenceOptions.FilePath and T_CsvFileReader.Field are T_MaxString, so they hold up to 255 characters.
+- T_StructPersistence sets ReadSuccess and WriteSuccess only when the read or write has finished without an error, reads again after a failed read, and auto-writes only after a read or write has succeeded.
+- T_StructFromJsonFileReader and T_StructToJsonFileWriter: Reset clears a file error, so the next read or write runs.
+- T_CsvFileReader.ReadyForParsing is FALSE when the file could not be read.
+- T_CsvFileWriter.AddStringField puts a field in double quotes when it holds the separator, a double quote, CR or LF.
+- ClearBuffer returns TRUE when it clears the buffer, in T_CsvFileWriter and T_TxtFileWriter.
+- T_TxtFileWriter.Write keeps lines longer than 255 characters.
+
+1.3.1.0 - JSON file fixes and a user guide.
 - T_StructFromJsonFileReader refuses a file longer than JsonParams.JSON_DOC_SIZE: it sets Error and logs both sizes, instead of overwriting its own settings.
 - T_StructToJsonFileWriter no longer writes the terminating NUL at the end of the file.
 - T_CheckFileExists.Check takes a T_MaxString path again (the 1.2.0 fix had not reached the source).
@@ -49,7 +58,7 @@
 1.0.5 Increased JDOC size.
 1.0.4 Fixed bug in assigning CSV separator for CsvReader
 1.0.3 Clear Read and Write Success flags on struct persistence when req'd.</Description>
-    <ProjectVersion>1.3.1.0</ProjectVersion>
+    <ProjectVersion>1.4.0.0</ProjectVersion>
     <POUsForPropertyAccessIncluded>true</POUsForPropertyAccessIncluded>
     <GlobalVersionStructureIncluded>true</GlobalVersionStructureIncluded>
   </PropertyGroup>

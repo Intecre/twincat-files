@@ -9,6 +9,7 @@ Test_ReadingAMissingFileGivesAnError();
 Test_ReaderReadsAgainAfterAnErrorAndReset();
 Test_ReaderRefusesAFileLongerThanJsonDocSize();
 Test_WrittenFileEndsWithTheClosingBrace();
+Test_WriterWritesAgainAfterAnErrorAndReset();
 ]]></ST>
     </Implementation>
     <Method Name="Test_ReaderReadsAgainAfterAnErrorAndReset" Id="{f8d77d5b-efc0-42f9-8347-cdbf9071eb24}">
@@ -273,6 +274,94 @@ CASE step OF
     AssertTrue(Condition := reader.Error, Message := 'a missing file gives an error');
     AssertFalse(Condition := reader.FileExists, Message := 'FileExists is FALSE');
     AssertFalse(Condition := reader.Done, Message := 'not done');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_WriterWritesAgainAfterAnErrorAndReset" Id="{9bbbd8cf-714e-0a61-1f96-351b4290d4e5}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_WriterWritesAgainAfterAnErrorAndReset
+VAR_INST
+  writer : T_StructToJsonFileWriter;
+  testFile : T_TestFile;
+  recipe : ST_TestRecipe;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+writer();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    // arrange: a write into a directory that does not exist fails
+    recipe.Name := 'after reset';
+    recipe.Speed := 3.5;
+    recipe.Count := 12;
+    recipe.Enabled := TRUE;
+    writer.SetFileParams(
+      FilePath := F_TestFilePath('no_such_directory\json_writer_after_reset.json'),
+      StructureName := 'ST_TestRecipe',
+      PointerToStructure := ADR(recipe),
+      SizeOfStructure := SIZEOF(recipe));
+    writer.WriteToFile();
+    step := 10;
+
+  10:
+
+    IF writer.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertTrue(Condition := writer.Error, Message := 'writing into a missing directory fails');
+    writer.SetFileParams(
+      FilePath := F_TestFilePath('json_writer_after_reset.json'),
+      StructureName := 'ST_TestRecipe',
+      PointerToStructure := ADR(recipe),
+      SizeOfStructure := SIZEOF(recipe));
+    writer.Reset();
+    step := 20;
+
+  20:
+
+    // act: write again, a scan after the Reset
+    writer.WriteToFile();
+    step := 30;
+
+  30:
+
+    IF writer.Busy THEN
+      RETURN;
+    END_IF
+
+    // assert
+    AssertFalse(Condition := writer.Error, Message := 'the second write succeeds after Reset');
+    testFile.Read(FilePath := F_TestFilePath('json_writer_after_reset.json'));
+    step := 40;
+
+  40:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertTrue(Condition := testFile.Contains('"Count":12'), Message := 'the file holds the struct');
     TEST_FINISHED_NAMED(__POUNAME());
 
 END_CASE

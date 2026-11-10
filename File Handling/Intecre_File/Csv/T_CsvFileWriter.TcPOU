@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.0">
+<TcPlcObject Version="1.1.0.1">
   <POU Name="T_CsvFileWriter" Id="{1085c9eb-e997-446a-b003-e836d48add8e}" SpecialFunc="None">
     <Declaration><![CDATA[// Usage:
 // Call instance (i.e. ofbCsvRead();) every scan while waiting for operations to complete.
@@ -29,46 +29,89 @@ END_VAR]]></Declaration>
     <Folder Name="Methods" Id="{851d5649-a418-4459-be3f-e02c0e797249}" />
     <Folder Name="Properties" Id="{b659b1b2-9be8-4a5a-ae17-3f1cba8e2b83}" />
     <Method Name="AddStringField" Id="{6b256194-708f-47b4-8712-19db3b00ab17}" FolderPath="Methods\">
-      <Declaration><![CDATA[METHOD PUBLIC AddStringField// Add Field. Adds CSV separator to previous field, if it exists
+      <Declaration><![CDATA[METHOD PUBLIC AddStringField // Add Field. Adds CSV separator to previous field, if it exists. Quotes a field holding the separator, a quote or a line break.
 VAR_INPUT 
 	sFieldString : STRING; 
 END_VAR
 
 VAR_INST
-	sFieldStringLocal : STRING; // This has a valid memory address (inputs dont)
+	csvField : Tc2_Utilities.T_MaxString; // the field as written to the file. This has a valid memory address (inputs dont)
+END_VAR
+
+VAR
+	needsQuotes : BOOL;
+	character : BYTE;
+	fieldIndex : INT;
+	csvLength : INT;
+END_VAR
+
+VAR CONSTANT
+	DOUBLE_QUOTE : BYTE := 16#22;
 END_VAR]]></Declaration>
       <Implementation>
-        <ST><![CDATA[sFieldStringLocal := sFieldString;
-// append separator to previous field if not first field
-IF _Column > 0 THEN 
-	
-	fileWrite.AppendToBuffer(
-		pDataForBuffer := ADR(Tc2_Utilities.DEFAULT_CSV_FIELD_SEP),
-		DataLength := SIZEOF(Tc2_Utilities.DEFAULT_CSV_FIELD_SEP)
-	);	
+        <ST><![CDATA[// Quote the field when it holds the separator, a quote or a line break, so it stays one field.
+// Inside the quotes, each quote is written twice (RFC 4180).
+needsQuotes := FALSE;
 
-	IF Error THEN // Error looks at FileWrite.Error
-		RETURN;
-	END_IF
-	
+FOR fieldIndex := 0 TO LEN(sFieldString) - 1 DO
+  character := sFieldString[fieldIndex];
+  needsQuotes := needsQuotes
+    OR (character = Tc2_Utilities.DEFAULT_CSV_FIELD_SEP)
+    OR (character = DOUBLE_QUOTE)
+    OR (character = CARRIAGE_RETURN)
+    OR (character = LINE_FEED);
+END_FOR
+
+IF NOT needsQuotes THEN
+  csvField := sFieldString;
+
+ELSE
+  // sFieldString holds at most 80 characters, so the quoted field fits in csvField
+  csvLength := 0;
+  csvField[csvLength] := DOUBLE_QUOTE;
+  csvLength := csvLength + 1;
+
+  FOR fieldIndex := 0 TO LEN(sFieldString) - 1 DO
+    character := sFieldString[fieldIndex];
+
+    IF character = DOUBLE_QUOTE THEN
+      csvField[csvLength] := DOUBLE_QUOTE;
+      csvLength := csvLength + 1;
+    END_IF
+
+    csvField[csvLength] := character;
+    csvLength := csvLength + 1;
+  END_FOR
+
+  csvField[csvLength] := DOUBLE_QUOTE;
+  csvField[csvLength + 1] := 0;
+
+END_IF
+
+// append separator to previous field if not first field
+IF _Column > 0 THEN
+  fileWrite.AppendToBuffer(
+    pDataForBuffer := ADR(Tc2_Utilities.DEFAULT_CSV_FIELD_SEP),
+    DataLength := SIZEOF(Tc2_Utilities.DEFAULT_CSV_FIELD_SEP)
+  );
+
+  IF Error THEN // Error looks at FileWrite.Error
+    RETURN;
+  END_IF
+
 END_IF
 
 // Add string.
 fileWrite.AppendToBuffer(
-	pDataForBuffer := ADR(sFieldStringLocal),
-	DataLength := INT_TO_UDINT(LEN(sFieldString))
+  pDataForBuffer := ADR(csvField),
+  DataLength := INT_TO_UDINT(LEN(csvField))
 );
 
 IF Error THEN // Error looks at FileWrite.Error
-	RETURN;
+  RETURN;
 END_IF
 
 _Column := _Column + 1;
-
-
-
-
-
 ]]></ST>
       </Implementation>
     </Method>

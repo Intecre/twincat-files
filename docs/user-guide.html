@@ -84,7 +84,7 @@
     <img src="img/intecre-logo.png" alt="Intecre: Innovation Technology Creativity" width="95" height="62">
     <div>
       <div class="title">File Handling</div>
-      <div class="sub">User guide &middot; <code>Intecre.File</code> 1.3.1.0, November 2026 &middot; checked with TwinCAT 3.1 build 4026 on the user-mode runtime</div>
+      <div class="sub">User guide &middot; <code>Intecre.File</code> 1.4.0.0, November 2026 &middot; checked with TwinCAT 3.1 build 4026 on the user-mode runtime</div>
     </div>
   </div>
 </header>
@@ -247,16 +247,16 @@ recipeFile(Options := recipeOptions);
   <tr><th style="width: 250px">Option</th><th class="num" style="width: 80px">Default</th><th>Meaning</th></tr>
   <tr><td><code>AddressOfStruct</code><br><code>SizeOfStruct</code></td><td class="num">&ndash;</td><td><code>ADR(recipe)</code> and <code>SIZEOF(recipe)</code>.</td></tr>
   <tr><td><code>Name<wbr>Of<wbr>Structure<wbr>Type</code></td><td class="num">&ndash;</td><td>The name of the structure's type, such as <code>'ST_Recipe'</code>. Not the variable's name.</td></tr>
-  <tr><td><code>FilePath</code></td><td class="num">&ndash;</td><td>The full path on the PLC. At most 80 characters (<a href="#limits">section 11</a>).</td></tr>
+  <tr><td><code>FilePath</code></td><td class="num">&ndash;</td><td>The full path on the PLC, up to 255 characters.</td></tr>
   <tr><td><code>Create<wbr>File<wbr>If<wbr>Doesnt<wbr>Exist</code></td><td class="num">TRUE</td><td>When the first read finds no file, write the structure as it is now.</td></tr>
-  <tr><td><code>Auto<wbr>Write<wbr>On<wbr>Difference</code></td><td class="num">TRUE</td><td>Save the structure on its own after it changes.</td></tr>
+  <tr><td><code>Auto<wbr>Write<wbr>On<wbr>Difference</code></td><td class="num">TRUE</td><td>Save the structure on its own after it changes. This starts once a read or write has succeeded, so it never creates a file that <code>Create<wbr>File<wbr>If<wbr>Doesnt<wbr>Exist</code> said not to, or replaces a file the block could not read.</td></tr>
   <tr><td><code>Auto<wbr>Write<wbr>Check<wbr>Time</code></td><td class="num">T#2M</td><td>How often to look for a change. The block compares a CRC of the structure with the CRC of what it last read or wrote.</td></tr>
   <tr><td><code>Auto<wbr>Write<wbr>Debounce<wbr>Time</code></td><td class="num">T#30S</td><td>After a change is seen, how long the structure must stay the same before it is written. An operator who edits several values in turn gets one write, not several.</td></tr>
 </table>
 
 <table>
   <tr><th style="width: 250px">Output or method</th><th>Meaning</th></tr>
-  <tr><td><code>ReadSuccess</code></td><td>The last read filled the structure from the file.</td></tr>
+  <tr><td><code>ReadSuccess</code></td><td>The last read filled the structure from the file. It rises once the block has finished with the file, so <code>WriteToFile()</code> works straight away. FALSE when the file is missing, too long or not valid JSON for the type.</td></tr>
   <tr><td><code>WriteSuccess</code></td><td>The last write saved the structure.</td></tr>
   <tr><td><code>FileCreated</code></td><td>The file was missing and has been written for the first time.</td></tr>
   <tr><td><code>Read<wbr>From<wbr>File() : BOOL</code></td><td>Read the file into the structure again. FALSE, and nothing happens, while a read or write is running.</td></tr>
@@ -264,11 +264,6 @@ recipeFile(Options := recipeOptions);
 </table>
 
 <p>With the defaults, a change reaches the disk between 30&nbsp;s and about 2&nbsp;min 30&nbsp;s after the last edit. Call <code>WriteToFile()</code> when it must be on disk sooner, for example when an operator presses <em>Save</em>.</p>
-
-<div class="warn">
-  <strong>A change made just as the first read finishes can stay unsaved</strong>
-  <code>ReadSuccess</code> rises a few cycles before the block has finished with the file. A change in those cycles is taken as what the file holds, so it is not written on its own. Leave the structure alone for about half a second after <code>ReadSuccess</code>, or save it with <code>WriteToFile()</code> (<a href="#limits">section 11</a>).
-</div>
 
 <div class="warn">
   <strong>An old file has no value for a new member</strong>
@@ -333,11 +328,6 @@ recipeReader();
   <tr><td><code>Reset()</code></td><td colspan="2">Clears <code>Error</code>. Both blocks refuse to start while <code>Error</code> is TRUE.</td></tr>
 </table>
 
-<div class="warn">
-  <strong>On the reader, <code>Reset()</code> on its own does not hold after a file error</strong>
-  The next call of the instance sets <code>Error</code> again from the failed read. Call <code>Reset()</code> and <code>ReadFromFile()</code> one after the other, with no call of the instance in between (<a href="#limits">section 11</a>).
-</div>
-
 <h3>What the reader refuses</h3>
 <ul>
   <li><strong>A file longer than <code>JsonParams.JSON_DOC_SIZE</code>.</strong> The reader sets <code>Error</code>, logs the file's length and the limit, and leaves the structure as it was.</li>
@@ -381,11 +371,12 @@ logWriter();
   <tr><th style="width: 290px">Member</th><th>Meaning</th></tr>
   <tr><td><code>Set<wbr>File<wbr>Params(File<wbr>Path, Separator)</code></td><td>The path, and <code>ASCI_COMMA</code> or <code>ASCI_SEMI_COLON</code>. Any other separator gives a semicolon.</td></tr>
   <tr><td><code>Set<wbr>File<wbr>Open<wbr>Mode(Append)</code></td><td>TRUE adds to the end of the file. FALSE, the default, replaces the file.</td></tr>
-  <tr><td><code>ClearBuffer()</code></td><td>Empties the buffer and sets <code>Row</code> and <code>Column</code> to 0. Call it before building the next file. It does nothing while <code>Busy</code>.</td></tr>
-  <tr><td><code>Add<wbr>String<wbr>Field(s<wbr>Field<wbr>String)</code></td><td>Adds a field, with a separator before it unless it is the first on the row.</td></tr>
+  <tr><td><code>ClearBuffer() : BOOL</code></td><td>Empties the buffer, sets <code>Row</code> and <code>Column</code> to 0, and returns TRUE. Call it before building the next file. While <code>Busy</code> it does nothing and returns FALSE.</td></tr>
+  <tr><td><code>Add<wbr>String<wbr>Field(s<wbr>Field<wbr>String)</code></td><td>Adds a field of up to 80 characters, with a separator before it unless it is the first on the row. A field that holds the separator, a double quote or a line break is put in double quotes, and each double quote in it is written twice, so it stays one field.</td></tr>
   <tr><td><code>NewLine()</code></td><td>Ends the row with CR LF.</td></tr>
   <tr><td><code>WriteToFile()</code></td><td>Ends the row, then writes the buffer. So a file always ends with a line end, and you do not call <code>NewLine()</code> after the last field.</td></tr>
   <tr><td><code>Row</code>, <code>Column</code></td><td>Where the next field goes, counted from 0.</td></tr>
+  <tr><td><code>BufferClear</code></td><td>TRUE at the start and after <code>ClearBuffer()</code>, until the next field or line end is added.</td></tr>
   <tr><td><code>Busy</code>, <code>Done</code>, <code>Error</code>, <code>ErrorId</code></td><td>As in <a href="#how">section 2</a>. <code>ErrorId</code> is the ADS error from the file system, such as 1804 for a path that is not there.</td></tr>
 </table>
 
@@ -453,9 +444,9 @@ pointsReader();
   <tr><td><code>Set<wbr>File<wbr>Params(File<wbr>Path, Separator)</code></td><td>As for the writer, and the separator is the same global.</td></tr>
   <tr><td><code>GetFile()</code></td><td>Starts reading the file and goes back to the first field.</td></tr>
   <tr><td><code>Busy</code>, <code>Error</code>, <code>ErrorId</code>, <code>FileExists</code></td><td>As in <a href="#how">section 2</a>.</td></tr>
-  <tr><td><code>ReadyForParsing</code></td><td>The file has been read. After a failed read it can still be TRUE, so check <code>Error</code> first.</td></tr>
+  <tr><td><code>ReadyForParsing</code></td><td>The file has been read without an error, so <code>NextField()</code> can start. FALSE after a failed read, such as a missing file.</td></tr>
   <tr><td><code>NextField()</code></td><td>Moves to the next field. The first call gives the first field.</td></tr>
-  <tr><td><code>Field</code>, <code>Row</code>, <code>Column</code></td><td>The current field, at most 80 characters, and where it is, counted from 0.</td></tr>
+  <tr><td><code>Field</code>, <code>Row</code>, <code>Column</code></td><td>The current field, up to 255 characters, and where it is, counted from 0.</td></tr>
   <tr><td><code>Eof</code></td><td>TRUE once <code>NextField()</code> has gone past the last field. <code>Field</code> then holds nothing useful.</td></tr>
 </table>
 
@@ -486,12 +477,13 @@ Parts made: 412</span></code></pre>
   <tr><th style="width: 250px">Member</th><th>Meaning</th></tr>
   <tr><td><code>Set<wbr>File<wbr>Params(File<wbr>Path)</code></td><td>The full path on the PLC.</td></tr>
   <tr><td><code>Set<wbr>File<wbr>Open<wbr>Mode(Append)</code></td><td>TRUE adds to the end of the file. FALSE, the default, replaces the file.</td></tr>
-  <tr><td><code>ClearBuffer()</code></td><td>Empties the buffer and sets <code>Row</code> to 0. It does nothing while <code>Busy</code>.</td></tr>
-  <tr><td><code>Write(Entry)</code></td><td>Adds text to the current line. At most 255 characters a call (<a href="#limits">section 11</a>).</td></tr>
+  <tr><td><code>ClearBuffer() : BOOL</code></td><td>Empties the buffer, sets <code>Row</code> to 0, and returns TRUE. While <code>Busy</code> it does nothing and returns FALSE.</td></tr>
+  <tr><td><code>Write(Entry)</code></td><td>Adds text to the current line: the whole <code>TxtFileString</code>, up to 300 characters a call (<a href="#limits">section 11</a>).</td></tr>
   <tr><td><code>WriteLine(Entry)</code></td><td>Adds text and ends the line with CR LF.</td></tr>
   <tr><td><code>NewLine()</code></td><td>Ends the line.</td></tr>
   <tr><td><code>WriteToFile()</code></td><td>Writes the buffer. Unlike the CSV writer, it adds no line end of its own.</td></tr>
   <tr><td><code>Row</code></td><td>The number of lines ended so far.</td></tr>
+  <tr><td><code>BufferClear</code></td><td>TRUE at the start and after <code>ClearBuffer()</code>, until anything is added.</td></tr>
   <tr><td><code>Busy</code>, <code>Done</code>, <code>Error</code>, <code>ErrorId</code></td><td>As for the CSV writer. A folder that does not exist gives <code>Error</code>: the writer does not create folders.</td></tr>
 </table>
 
@@ -531,6 +523,21 @@ recipeFileCheck();
 
 <h2 id="upgrading"><span class="n">9</span>Upgrading</h2>
 
+<h3>From 1.3.1.0 to 1.4.0.0</h3>
+<p>Two types are wider, and the blocks now do what the 1.3.1.0 guide listed as known issues. Install 1.4.0.0, rebuild, and look at the rows below where your code relied on the old behaviour.</p>
+<table>
+  <tr><th style="width: 44%">Change</th><th>What to check</th></tr>
+  <tr><td><code>ST_Persistence<wbr>Options.<wbr>FilePath</code> is a <code>T_MaxString</code>, so a path can be 255 characters, not 80.</td><td>Code that copies <code>FilePath</code> into a <code>STRING</code> cuts it at 80 again: make that variable a <code>T_MaxString</code> too. The structure is larger, so check a <code>PERSISTENT</code> or <code>RETAIN</code> variable of this type after the first start.</td></tr>
+  <tr><td><code>T_Csv<wbr>File<wbr>Reader.Field</code> is a <code>T_MaxString</code>, so a field can be 255 characters, not 80.</td><td>A <code>STRING</code> variable that takes <code>Field</code> still holds only 80. Make it a <code>T_MaxString</code>.</td></tr>
+  <tr><td><code>T_CsvFileWriter</code> puts a field in double quotes when it holds the separator, a double quote or a line break.</td><td>Files with such fields change. A program that reads them must handle quoted CSV fields. Other files are byte for byte the same.</td></tr>
+  <tr><td><code>T_Csv<wbr>File<wbr>Reader.<wbr>Ready<wbr>For<wbr>Parsing</code> is FALSE after a failed read.</td><td>Nothing, if you already checked <code>Error</code> first.</td></tr>
+  <tr><td><code>ClearBuffer()</code> on both writers returns TRUE, and <code>BufferClear</code> is TRUE, once the buffer is clear.</td><td>Nothing, unless code waited on either of them: it now carries on.</td></tr>
+  <tr><td><code>T_Txt<wbr>File<wbr>Writer.Write</code> keeps the whole <code>TxtFileString</code>, up to 300 characters, not 255.</td><td>Text that was cut at 255 characters now reaches the file whole.</td></tr>
+  <tr><td>On both JSON blocks, <code>Reset()</code> after a file error holds until the next start.</td><td>Nothing. Calling <code>Reset()</code> and the start method one after the other still works.</td></tr>
+  <tr><td><code>T_Struct<wbr>Persistence</code>: <code>ReadSuccess</code> and <code>WriteSuccess</code> rise once the read or write has finished, so <code>WriteToFile()</code> works as soon as <code>ReadSuccess</code> is TRUE. <code>ReadFromFile()</code> works again after a failed read. A change made while a file is being written is saved by the next automatic write. An automatic write that falls due during a read or write waits for it to finish, rather than starting over it.</td><td>The wait after <code>ReadSuccess</code> and the retries of <code>WriteToFile()</code> are no longer needed, and can stay.</td></tr>
+  <tr><td><code>T_Struct<wbr>Persistence</code>: <code>ReadSuccess</code> is FALSE for a file that is too long or not valid JSON for the type; it used to rise. The automatic write starts only once a read or write has succeeded.</td><td>A structure whose file cannot be read is no longer saved on its own, so a missing file stays missing when <code>Create<wbr>File<wbr>If<wbr>Doesnt<wbr>Exist</code> is FALSE, and an unreadable file is left for you to fix. Call <code>WriteToFile()</code> to replace it.</td></tr>
+</table>
+
 <h3>From 1.2.0 to 1.3.1.0</h3>
 <p>There are no interface changes. Install 1.3.1.0, and references to <code>Intecre.File</code> that resolve to the newest version pick it up at the next build.</p>
 <table>
@@ -551,7 +558,7 @@ recipeFileCheck();
   <tr><td><code>JSON file not read: it is N bytes, more than Json<wbr>Params.<wbr>JSON_DOC_SIZE (M). Increase JSON_DOC_SIZE in the Intecre.<wbr>File library parameters.</code></td><td>The file is too long for the reader, and the structure is unchanged. Raise <code>JSON_DOC_SIZE</code> (<a href="#json">section 5</a>), or check that the path names the file you meant.</td></tr>
   <tr><td><code>Error while adding to write buffer. Try increasing Json<wbr>Doc size using Json<wbr>Params in library, or TC mailbox size.</code></td><td>The structure's JSON is longer than <code>JSON_DOC_SIZE</code>, and nothing was written. Raise the parameter.</td></tr>
   <tr><td><code>Error while creating json file from structure. Check argument for Set<wbr>File<wbr>Params</code></td><td>The type name is wrong, or is the variable's name instead of the type's, or the address or size is wrong. Check <code>StructureName</code> or <code>Name<wbr>Of<wbr>Structure<wbr>Type</code>.</td></tr>
-  <tr><td><code>Cannot read from file while block is in an error state. Reset first</code><br><code>Cannot write to file while block is in an error state. Reset first</code></td><td>Call <code>Reset()</code>, then start again. On the reader, call both one after the other (<a href="#json">section 5</a>).</td></tr>
+  <tr><td><code>Cannot read from file while block is in an error state. Reset first</code><br><code>Cannot write to file while block is in an error state. Reset first</code></td><td>Call <code>Reset()</code>, then start again.</td></tr>
   <tr><td><code>Read<wbr>From<wbr>File error, try Rest or wait until not busy</code></td><td>A read was started while one was running. Wait for <code>Busy</code> to fall, then <code>Reset()</code> and read again.</td></tr>
   <tr><td><code>Error  starting file write. Try calling Reset first.</code></td><td>A write was started while one was running. Wait for <code>Busy</code> to fall.</td></tr>
   <tr><td><code>Reset called</code> (Debug)</td><td>Not an error.</td></tr>
@@ -578,7 +585,8 @@ recipeFileCheck();
   <tr><td>One CSV file has another file's separator</td><td>The separator is one global for the whole PLC (<a href="#csv">section 6</a>).</td></tr>
   <tr><td>A row or line is missing from a file</td><td>It was added while a write was running, and was dropped (<a href="#csv">section 6</a>).</td></tr>
   <tr><td>A JSON file written before 1.3.1 ends in a 0 byte, and a PC tool will not open it</td><td>The old writer added it. Write the file again with 1.3.1 or later.</td></tr>
-  <tr><td>A change to a persistent structure was never saved</td><td>It was made just as the first read finished (<a href="#persist">section 4</a>), or <code>Auto<wbr>Write<wbr>On<wbr>Difference</code> is FALSE.</td></tr>
+  <tr><td>A change to a persistent structure was never saved</td><td><code>Auto<wbr>Write<wbr>On<wbr>Difference</code> is FALSE, no read or write has succeeded yet, or the structure has not yet stayed the same for <code>Auto<wbr>Write<wbr>Debounce<wbr>Time</code> (<a href="#persist">section 4</a>).</td></tr>
+  <tr><td>A CSV field is in double quotes</td><td>It holds the separator, a double quote or a line break, and is quoted so it stays one field (<a href="#csv">section 6</a>).</td></tr>
 </table>
 
 <h2 id="limits"><span class="n">11</span>Limits</h2>
@@ -587,25 +595,16 @@ recipeFileCheck();
 <table>
   <tr><th style="width: 300px">Constant or type</th><th class="num" style="width: 80px">Value</th><th>What it limits</th></tr>
   <tr><td><code>JsonParams.<wbr>JSON_DOC_SIZE</code>, a library parameter</td><td class="num">10000</td><td>The characters of JSON one reader or writer can hold. Each reader and writer has a buffer this size, and <code>T_Struct<wbr>Persistence</code> has one of each, so about 20&nbsp;kB of PLC memory per persistence block.</td></tr>
-  <tr><td><code>Param.<wbr>TXT_FILE_<wbr>MAX_STRING_<wbr>LENGTH</code>, a library parameter</td><td class="num">300</td><td>The string type <code>TxtFileString</code> that <code>T_Txt<wbr>File<wbr>Writer.<wbr>Write</code> takes. Each call still keeps only 255 characters (below).</td></tr>
-  <tr><td><code>Tc2_Utilities.<wbr>T_MaxString</code></td><td class="num">255</td><td>A path, in every block except <code>T_Struct<wbr>Persistence</code>.</td></tr>
-  <tr><td><code>ST_Persistence<wbr>Options.<wbr>FilePath</code>, a <code>STRING</code></td><td class="num">80</td><td>The path of a persistence block.</td></tr>
-  <tr><td><code>STRING</code></td><td class="num">80</td><td>A CSV field, written with <code>AddStringField</code> or read from <code>Field</code>.</td></tr>
+  <tr><td><code>Param.<wbr>TXT_FILE_<wbr>MAX_STRING_<wbr>LENGTH</code>, a library parameter</td><td class="num">300</td><td>The string type <code>TxtFileString</code> that <code>T_Txt<wbr>File<wbr>Writer.<wbr>Write</code> takes, so the text one call adds.</td></tr>
+  <tr><td><code>Tc2_Utilities.<wbr>T_MaxString</code></td><td class="num">255</td><td>A path, in every block, and a CSV field read from <code>T_Csv<wbr>File<wbr>Reader.Field</code>.</td></tr>
+  <tr><td><code>STRING</code></td><td class="num">80</td><td>A CSV field written with <code>AddStringField</code>, before any quotes are added.</td></tr>
 </table>
 
 <h3>Known issues</h3>
-<p>The <code>TestRunner</code> project has a TcUnit suite for every block, and each test states the intended behaviour. These are the tests that fail today, with a way round each one until it is fixed.</p>
+<p>The <code>TestRunner</code> project has a TcUnit suite for every block, and each test states the intended behaviour. All of them pass. This issue was found by reading the code, and no test covers it yet.</p>
 <table>
   <tr><th style="width: 55%">Issue</th><th>What to do meanwhile</th></tr>
-  <tr><td><code>T_Struct<wbr>Persistence</code>: <code>ReadSuccess</code> rises a few cycles before the read has finished. Until it has, <code>WriteToFile()</code> returns FALSE, and a change to the structure is taken as what the file holds.<br><span style="color: var(--muted); font-size: 13px">Test: <code>Test_<wbr>Write<wbr>To<wbr>File<wbr>Saves<wbr>The<wbr>Current<wbr>Struct</code>, <code>Test_<wbr>Auto<wbr>Writes<wbr>After<wbr>The<wbr>Struct<wbr>Changes</code></span></td><td>Keep calling <code>WriteToFile()</code> until it returns TRUE. Leave the structure alone for about half a second after <code>ReadSuccess</code>.</td></tr>
-  <tr><td><code>T_Struct<wbr>Persistence</code>: after a read fails, for example because the file was missing and <code>Create<wbr>File<wbr>If<wbr>Doesnt<wbr>Exist</code> is FALSE, <code>ReadFromFile()</code> fails again even when the file is now there.<br><span style="color: var(--muted); font-size: 13px">Test: <code>Test_<wbr>Reads<wbr>Again<wbr>After<wbr>AFailed<wbr>Read</code></span></td><td>Leave <code>Create<wbr>File<wbr>If<wbr>Doesnt<wbr>Exist</code> TRUE, or use the reader directly.</td></tr>
-  <tr><td><code>ST_Persistence<wbr>Options.<wbr>FilePath</code> holds 80 characters, and a longer path is cut short.<br><span style="color: var(--muted); font-size: 13px">Test: <code>Test_<wbr>Creates<wbr>AFile<wbr>With<wbr>APath<wbr>Longer<wbr>Than80<wbr>Characters</code></span></td><td>Keep the path to 80 characters.</td></tr>
-  <tr><td><code>T_Struct<wbr>From<wbr>Json<wbr>File<wbr>Reader</code>: after a file error, <code>Reset()</code> on its own does not hold.<br><span style="color: var(--muted); font-size: 13px">Test: <code>Test_<wbr>Reader<wbr>Reads<wbr>Again<wbr>After<wbr>An<wbr>Error<wbr>And<wbr>Reset</code></span></td><td>Call <code>Reset()</code> and <code>ReadFromFile()</code> one after the other, with no call of the instance in between. The code says this works; no test covers it yet.</td></tr>
-  <tr><td><code>T_CsvFileReader</code>: after a failed read, <code>ReadyForParsing</code> is TRUE.<br><span style="color: var(--muted); font-size: 13px">Test: <code>Test_<wbr>Missing<wbr>File<wbr>Gives<wbr>An<wbr>Error</code></span></td><td>Check <code>Error</code> first.</td></tr>
-  <tr><td><code>T_Csv<wbr>File<wbr>Reader.Field</code> holds 80 characters, and a longer field is cut short.<br><span style="color: var(--muted); font-size: 13px">Test: <code>Test_<wbr>Keeps<wbr>Fields<wbr>Longer<wbr>Than80<wbr>Characters</code></span></td><td>Keep fields to 80 characters.</td></tr>
-  <tr><td><code>T_CsvFileWriter</code> does not quote a field, so a field holding the separator splits into two.<br><span style="color: var(--muted); font-size: 13px">Test: <code>Test_<wbr>Quotes<wbr>AField<wbr>Containing<wbr>The<wbr>Separator</code></span></td><td>Remove or replace the separator in the text first.</td></tr>
-  <tr><td><code>ClearBuffer()</code> on both writers always returns FALSE, and <code>BufferClear</code> does not say that the buffer is clear. The buffer is cleared all the same.<br><span style="color: var(--muted); font-size: 13px">Test: <code>Test_<wbr>Clear<wbr>Buffer<wbr>Reports<wbr>The<wbr>Buffer<wbr>Is<wbr>Clear</code>, in both writer suites</span></td><td>Ignore the return value and <code>BufferClear</code>. Check <code>NOT Busy</code> before clearing.</td></tr>
-  <tr><td><code>T_Txt<wbr>File<wbr>Writer.Write</code> keeps 255 characters of each call, although <code>TxtFileString</code> holds 300.<br><span style="color: var(--muted); font-size: 13px">Test: <code>Test_<wbr>Keeps<wbr>Lines<wbr>Longer<wbr>Than255<wbr>Characters</code></span></td><td>Split longer text over several <code>Write</code> calls.</td></tr>
+  <tr><td><code>T_CsvFileReader</code>, <code>T_CsvFileWriter</code> and <code>T_TxtFileWriter</code>: a read or write that fails after the file has opened, such as on a full disk, can end with <code>Error</code> FALSE, because closing the file overwrites the error. The JSON blocks and <code>T_Struct<wbr>Persistence</code> keep the error.</td><td>Where a lost row matters, read the file back and check it.</td></tr>
 </table>
 
 <h3>Other limits</h3>
@@ -614,11 +613,11 @@ recipeFileCheck();
   <li><strong>The CSV separator is one global</strong> for the whole PLC, and only a comma or a semicolon.</li>
   <li><strong>Files live in router memory while the blocks work on them.</strong> A file being read is held whole until the next read; a file being built grows until <code>ClearBuffer()</code>. A very large file needs router memory of its size.</li>
   <li><strong>The writers replace or append whole files.</strong> They do not create folders, and do not write safely: a power cut during a write can leave the file short. Keep a copy of a file you cannot lose.</li>
-  <li><strong>Checked on one setup.</strong> TwinCAT 3.1 build 4026 on the user-mode runtime, 10 November 2026: 35 TcUnit tests, of which 24 pass and 11 fail, the 11 being the known issues above. Not yet checked: a real-time target, and a changed <code>JSON_DOC_SIZE</code> set through the library reference.</li>
+  <li><strong>Checked on one setup.</strong> TwinCAT 3.1 build 4026 on the user-mode runtime, 10 November 2026: 37 TcUnit tests in 7 suites, and all of them pass. Not yet checked: a real-time target, a changed <code>JSON_DOC_SIZE</code> set through the library reference, and reading a quoted CSV field back with <code>T_CsvFileReader</code>.</li>
 </ul>
 
 <footer>
-  File Handling &middot; <code>Intecre.File</code> 1.3.1.0 &middot; source, tests and releases at <a href="https://github.com/Intecre/twincat-files">github.com/Intecre/twincat-files</a>.
+  File Handling &middot; <code>Intecre.File</code> 1.4.0.0 &middot; source, tests and releases at <a href="https://github.com/Intecre/twincat-files">github.com/Intecre/twincat-files</a>.
 </footer>
 
 </main>

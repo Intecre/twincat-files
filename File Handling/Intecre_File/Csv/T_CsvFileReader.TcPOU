@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.0">
+<TcPlcObject Version="1.1.0.1">
   <POU Name="T_CsvFileReader" Id="{f698c541-82b7-49fe-a39a-d5b39221df43}" SpecialFunc="None">
     <Declaration><![CDATA[// Usage:
 // Call instance (i.e. ofbCsvRead();) every scan while waiting for operations to complete.
@@ -88,7 +88,7 @@ PROPERTY PUBLIC ErrorId : UDINT]]></Declaration>
       </Get>
     </Property>
     <Property Name="Field" Id="{865fbe2a-be60-4449-8c53-c3605f20d429}" FolderPath="Properties\">
-      <Declaration><![CDATA[PROPERTY PUBLIC Field : String]]></Declaration>
+      <Declaration><![CDATA[PROPERTY PUBLIC Field : Tc2_Utilities.T_MaxString]]></Declaration>
       <Get Name="Get" Id="{379e603a-abf4-4f3a-9b63-65a352852a0a}">
         <Declaration><![CDATA[VAR
 END_VAR
@@ -187,7 +187,8 @@ PROPERTY PUBLIC ReadyForParsing : BOOL]]></Declaration>
       <Get Name="Get" Id="{e158f41a-26cd-4222-a0f8-5f6c09312497}">
         <Declaration><![CDATA[]]></Declaration>
         <Implementation>
-          <ST><![CDATA[ReadyForParsing := fileRead.Done;
+          <ST><![CDATA[// a read that ended in an error, such as a missing file, has nothing to parse
+ReadyForParsing := fileRead.Done AND NOT fileRead.Error;
 ]]></ST>
         </Implementation>
       </Get>

@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.18">
+<TcPlcObject Version="1.1.0.1">
   <POU Name="T_FileWriteBase" Id="{a17bb74f-1a47-4c10-8da3-0fab1596f8bf}" SpecialFunc="None">
     <Declaration><![CDATA[(* Usage:
  N.B. THIS CLASS DOES NOT CARE ABOUT THE DATA ADDED TO THE BUFFER.
@@ -206,15 +206,18 @@ END_VAR
 
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[IF State = E_FileBaseStates.WaitForStart THEN
-	// reset the buffer
-	IF FileBuffer > 0 THEN
-		__DELETE(FileBuffer);
-		FileBufferSize := 0; // reset length
-	END_IF
-	
+        <ST><![CDATA[// the buffer can only be cleared while no write is running
+IF State <> E_FileBaseStates.WaitForStart THEN
+  RETURN;
 END_IF
 
+IF FileBuffer > 0 THEN
+  __DELETE(FileBuffer);
+END_IF
+
+FileBufferSize := 0;
+_BufferClear := TRUE;
+ClearWriteBuffer := TRUE;
 ]]></ST>
       </Implementation>
     </Method>
@@ -402,77 +405,5 @@ END_IF
 StartWrite := _Start;]]></ST>
       </Implementation>
     </Method>
-    <LineIds Name="T_FileWriteBase">
-      <LineId Id="4140" Count="11" />
-      <LineId Id="4153" Count="26" />
-      <LineId Id="4192" Count="2" />
-      <LineId Id="4253" Count="0" />
-      <LineId Id="4196" Count="56" />
-      <LineId Id="9" Count="0" />
-    </LineIds>
-    <LineIds Name="T_FileWriteBase.AppendToBuffer">
-      <LineId Id="75" Count="11" />
-      <LineId Id="5" Count="0" />
-    </LineIds>
-    <LineIds Name="T_FileWriteBase.BufferClear.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_FileWriteBase.Busy.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_FileWriteBase.ClearWriteBuffer">
-      <LineId Id="78" Count="5" />
-      <LineId Id="103" Count="2" />
-      <LineId Id="5" Count="0" />
-    </LineIds>
-    <LineIds Name="T_FileWriteBase.DataLength.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_FileWriteBase.Done.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_FileWriteBase.Error.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_FileWriteBase.ErrorId.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_FileWriteBase.extendBufferSizeAndExtend">
-      <LineId Id="62" Count="1" />
-      <LineId Id="3" Count="0" />
-      <LineId Id="60" Count="1" />
-      <LineId Id="4" Count="18" />
-      <LineId Id="64" Count="1" />
-      <LineId Id="23" Count="31" />
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_FileWriteBase.FB_exit">
-      <LineId Id="17" Count="0" />
-      <LineId Id="7" Count="1" />
-      <LineId Id="16" Count="0" />
-      <LineId Id="13" Count="2" />
-      <LineId Id="6" Count="0" />
-    </LineIds>
-    <LineIds Name="T_FileWriteBase.FB_init">
-      <LineId Id="7" Count="0" />
-    </LineIds>
-    <LineIds Name="T_FileWriteBase.SetFileOpenMode">
-      <LineId Id="7" Count="0" />
-    </LineIds>
-    <LineIds Name="T_FileWriteBase.SetFilePath">
-      <LineId Id="10" Count="1" />
-      <LineId Id="24" Count="0" />
-      <LineId Id="14" Count="2" />
-      <LineId Id="12" Count="0" />
-      <LineId Id="5" Count="0" />
-    </LineIds>
-    <LineIds Name="T_FileWriteBase.StartWrite">
-      <LineId Id="13" Count="0" />
-      <LineId Id="7" Count="0" />
-      <LineId Id="11" Count="0" />
-      <LineId Id="6" Count="0" />
-      <LineId Id="12" Count="0" />
-      <LineId Id="5" Count="0" />
-    </LineIds>
   </POU>
 </TcPlcObject>

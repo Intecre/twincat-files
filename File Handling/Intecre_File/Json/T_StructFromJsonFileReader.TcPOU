@@ -1,9 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.18">
+<TcPlcObject Version="1.1.0.1">
   <POU Name="T_StructFromJsonFileReader" Id="{016623f6-0ecd-07dc-1a87-4776279e0b49}" SpecialFunc="None">
     <Declaration><![CDATA[FUNCTION_BLOCK T_StructFromJsonFileReader EXTENDS T_NamedBase
 VAR
-	filePath : STRING; // fully qualified, including directory
+	filePath : Tc2_Utilities.T_MaxString; // fully qualified, including directory
 	fileRead : T_FileReadBase;
 	jDoc : JsonDoc;
 	structureName : STRING; // i.e. 'ST_Recipe'
@@ -15,11 +15,16 @@ VAR
 	_done : BOOL;
 	_fileExists : BOOL;
 	doneTrig : R_TRIG;
+	fileErrorTrig : R_TRIG; // a new file error; fileRead.Error stays TRUE until the next read starts
 END_VAR
 ]]></Declaration>
     <Implementation>
       <ST><![CDATA[fileRead();
-_error S= fileRead.Error;
+
+// Latch a file error when it happens, not while it lasts, so that Reset sticks:
+// fileRead.Error stays TRUE until the next read starts.
+fileErrorTrig(CLK := fileRead.Error);
+_error S= fileErrorTrig.Q;
 _busy := fileRead.Busy;
 _done := fileRead.Done AND fileRead.BufferAvailable;
 _fileExists := fileRead.FileExists;
@@ -148,59 +153,5 @@ THIS^.pointerToStructure := PointerToStructure;
 THIS^.sizeOfStructure := SizeOfStructure; ]]></ST>
       </Implementation>
     </Method>
-    <LineIds Name="T_StructFromJsonFileReader">
-      <LineId Id="23" Count="1" />
-      <LineId Id="9" Count="0" />
-      <LineId Id="35" Count="0" />
-      <LineId Id="30" Count="1" />
-      <LineId Id="26" Count="0" />
-      <LineId Id="32" Count="0" />
-      <LineId Id="25" Count="0" />
-      <LineId Id="46" Count="0" />
-      <LineId Id="43" Count="0" />
-      <LineId Id="84" Count="0" />
-      <LineId Id="44" Count="0" />
-      <LineId Id="78" Count="1" />
-      <LineId Id="81" Count="1" />
-      <LineId Id="80" Count="0" />
-      <LineId Id="57" Count="0" />
-      <LineId Id="34" Count="0" />
-      <LineId Id="47" Count="2" />
-      <LineId Id="51" Count="1" />
-      <LineId Id="54" Count="0" />
-      <LineId Id="33" Count="0" />
-      <LineId Id="28" Count="0" />
-    </LineIds>
-    <LineIds Name="T_StructFromJsonFileReader.Busy.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_StructFromJsonFileReader.Done.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_StructFromJsonFileReader.Error.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_StructFromJsonFileReader.FileExists.Get">
-      <LineId Id="2" Count="0" />
-    </LineIds>
-    <LineIds Name="T_StructFromJsonFileReader.ReadFromFile">
-      <LineId Id="7" Count="3" />
-      <LineId Id="6" Count="0" />
-      <LineId Id="11" Count="0" />
-      <LineId Id="5" Count="0" />
-      <LineId Id="13" Count="4" />
-      <LineId Id="12" Count="0" />
-    </LineIds>
-    <LineIds Name="T_StructFromJsonFileReader.Reset">
-      <LineId Id="8" Count="1" />
-    </LineIds>
-    <LineIds Name="T_StructFromJsonFileReader.SetFileParams">
-      <LineId Id="4" Count="0" />
-      <LineId Id="23" Count="0" />
-      <LineId Id="29" Count="0" />
-      <LineId Id="27" Count="0" />
-      <LineId Id="2" Count="0" />
-      <LineId Id="28" Count="0" />
-    </LineIds>
   </POU>
 </TcPlcObject>
