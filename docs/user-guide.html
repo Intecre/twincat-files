@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Intecre File Handling: user guide</title>
+<link rel="icon" href="img/intecre-mark.png">
+<style>
+  :root { --brand: #4B734C; --brand-dark: #365538; --brand-tint: #F2F6F2; --ink: #2B2B2B; --muted: #6D6D6D;
+          --line: #E0E0E0; --code: #F4F4F4; --warn: #9A6700; --warn-tint: #FFF8E5; --stop: #A4332B; --stop-tint: #FDF1F0; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: #F7F7F7; color: var(--ink); font: 15px/1.6 "Segoe UI", system-ui, sans-serif; }
+  header.top { background: #fff; border-top: 4px solid var(--brand); border-bottom: 1px solid var(--line); }
+  header.top .inner { max-width: 1220px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 22px; }
+  header.top img { height: 62px; border: 0; margin: 0; }
+  header.top .title { font-size: 22px; font-weight: 600; color: var(--brand); line-height: 1.2; }
+  header.top .sub { color: var(--muted); font-size: 13px; }
+  .page { max-width: 1220px; margin: 0 auto; display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 0; }
+  nav.toc { position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto; padding: 22px 12px 22px 24px; font-size: 13.5px; }
+  nav.toc .label { text-transform: uppercase; letter-spacing: .06em; font-size: 11px; color: var(--muted); margin: 0 0 8px; }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  nav.toc li { counter-increment: toc; margin: 0; }
+  nav.toc a { display: block; padding: 4px 8px; border-left: 3px solid transparent; color: var(--ink); text-decoration: none; border-radius: 0 3px 3px 0; }
+  nav.toc a::before { content: counter(toc) "  "; color: var(--muted); }
+  nav.toc a:hover { background: var(--brand-tint); border-left-color: var(--brand); color: var(--brand-dark); }
+  main { background: #fff; padding: 8px 40px 56px; border-left: 1px solid var(--line); border-right: 1px solid var(--line); min-width: 0; }
+  h1, h2, h3 { color: var(--brand); line-height: 1.25; }
+  h1 { margin: 28px 0 6px; font-size: 30px; }
+  h2 { margin-top: 44px; padding-bottom: 5px; border-bottom: 1px solid var(--line); font-size: 22px; scroll-margin-top: 12px; }
+  h2 .n { display: inline-block; min-width: 30px; height: 30px; line-height: 30px; margin-right: 10px; border-radius: 15px; background: var(--brand); color: #fff; font-size: 15px; text-align: center; vertical-align: 2px; }
+  h3 { margin-top: 26px; font-size: 17px; scroll-margin-top: 12px; }
+  p.lead { font-size: 17px; color: #444; margin-top: 4px; }
+  a { color: var(--brand); }
+  code { background: var(--code); padding: 1px 5px; border-radius: 3px; font: 13px Consolas, "Cascadia Mono", monospace; }
+  pre { background: var(--code); border-left: 3px solid var(--brand); padding: 11px 14px; border-radius: 0 4px 4px 0; overflow-x: auto; font: 13px/1.5 Consolas, "Cascadia Mono", monospace; margin: 12px 0; }
+  pre code { padding: 0; background: none; font: inherit; }
+  pre .c { color: #6A7F6B; }            /* comment */
+  pre .k { color: var(--brand-dark); font-weight: 600; }   /* keyword */
+  pre .o { color: #555; }               /* program output */
+  pre.out { border-left-color: #B9B9B9; }
+  .cap { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 16px 0 -8px; }
+  table { border-collapse: collapse; margin: 14px 0; width: 100%; }
+  th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--brand-tint); color: var(--brand-dark); font-weight: 600; }
+  td.num { text-align: right; white-space: nowrap; }
+  figure { margin: 18px 0; }
+  figure img, figure svg { max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 4px; display: block; background: #fff; }
+  figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .note, .warn, .stop { border-left: 4px solid var(--brand); background: var(--brand-tint); padding: 10px 14px; margin: 16px 0; border-radius: 0 4px 4px 0; }
+  .warn { border-left-color: var(--warn); background: var(--warn-tint); }
+  .stop { border-left-color: var(--stop); background: var(--stop-tint); }
+  .note strong:first-child, .warn strong:first-child, .stop strong:first-child { display: block; margin-bottom: 2px; }
+  ol.steps { list-style: none; counter-reset: step; padding: 0; margin: 14px 0; }
+  ol.steps > li { counter-increment: step; position: relative; padding: 2px 0 10px 44px; }
+  ol.steps > li::before { content: counter(step); position: absolute; left: 0; top: 0; width: 28px; height: 28px; line-height: 28px; text-align: center; border-radius: 14px; border: 2px solid var(--brand); color: var(--brand); font-weight: 600; background: #fff; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .two > div { min-width: 0; }
+  footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); margin-top: 48px; padding-top: 14px; }
+  @media (max-width: 900px) {
+    .page { display: block; }
+    nav.toc { position: static; max-height: none; padding: 14px 16px 0; }
+    nav.toc ol { columns: 2; }
+    main { padding: 4px 16px 40px; border: 0; }
+    .two { grid-template-columns: 1fr; }
+    header.top .inner { padding: 12px 16px; }
+    header.top img { height: 48px; }
+  }
+  @media print {
+    body { background: #fff; } nav.toc { display: none; } .page { display: block; } main { border: 0; padding: 0; }
+    h2 { break-after: avoid; } pre, figure, table { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="inner">
+    <img src="img/intecre-logo.png" alt="Intecre: Innovation Technology Creativity" width="95" height="62">
+    <div>
+      <div class="title">File Handling</div>
+      <div class="sub">User guide &middot; Intecre.File 1.3.1.0, November 2026 &middot; checked with TwinCAT 3.1 build 4026 on the user-mode runtime</div>
+    </div>
+  </div>
+</header>
+
+<div class="page">
+
+<nav class="toc" aria-label="Contents">
+  <p class="label">Contents</p>
+  <ol>
+    <li><a href="#what">What the library does</a></li>
+    <li><a href="#how">How every block works</a></li>
+    <li><a href="#before">Before you start</a></li>
+    <li><a href="#start">Quick start: a recipe file</a></li>
+    <li><a href="#persist">Keeping a structure in a file</a></li>
+    <li><a href="#json">JSON files</a></li>
+    <li><a href="#csv">CSV files</a></li>
+    <li><a href="#txt">Text files</a></li>
+    <li><a href="#exists">Checking that a file exists</a></li>
+    <li><a href="#sizing">Sizes and memory</a></li>
+    <li><a href="#messages">Messages and what to do</a></li>
+    <li><a href="#limits">Limits and known issues</a></li>
+    <li><a href="#versions">Versions</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<h1>File Handling user guide</h1>
+<p class="lead">Save a PLC structure to a JSON file and read it back at start-up. Write and read CSV files a field at a time, write text files a line at a time, and check that a file is there. Every block works in the background over several PLC cycles, so a file operation never holds up your task.</p>
+
+<h2 id="what"><span class="n">1</span>What the library does</h2>
+
+<p>The library is <strong>Intecre.File</strong>, a TwinCAT 3 library. Its namespace is <code>Intecre_File</code>.</p>
+
+<table>
+  <tr><th style="width: 230px">Block</th><th>What it does</th></tr>
+  <tr><td><code>T_StructPersistence</code></td><td>Keeps one structure in a JSON file. It reads the file into the structure at start-up, creates the file if it is missing, and can write the structure back on its own after it changes (<a href="#persist">section 5</a>).</td></tr>
+  <tr><td><code>T_StructToJsonFileWriter</code></td><td>Writes any structure to a file as JSON (<a href="#json">section 6</a>).</td></tr>
+  <tr><td><code>T_StructFromJsonFileReader</code></td><td>Reads a JSON file into a structure of the same type (<a href="#json">section 6</a>).</td></tr>
+  <tr><td><code>T_CsvFileWriter</code></td><td>Builds a CSV file field by field and row by row, then writes or appends it (<a href="#csv">section 7</a>).</td></tr>
+  <tr><td><code>T_CsvFileReader</code></td><td>Reads a CSV file and hands you one field at a time, with its row and column (<a href="#csv">section 7</a>).</td></tr>
+  <tr><td><code>T_TxtFileWriter</code></td><td>Builds a text file from strings and lines, then writes or appends it (<a href="#txt">section 8</a>).</td></tr>
+  <tr><td><code>T_CheckFileExists</code></td><td>Says whether a file is there (<a href="#exists">section 9</a>).</td></tr>
+</table>
+
+<p>The JSON blocks use Beckhoff's <code>Tc3_JsonXml</code>, so any structure works, with no code per type. The member names in the file are the member names in the structure:</p>
+<pre class="out"><code><span class="o">{"Name":"Batch 7","Speed":2.5,"Count":7,"Enabled":true}</span></code></pre>
+
+<h2 id="how"><span class="n">2</span>How every block works</h2>
+
+<p>File access in TwinCAT takes several PLC cycles. The blocks never wait for it. You start an operation with a method call. Then you call the instance once every cycle, which moves the operation on, and watch its status until it has finished.</p>
+
+<figure>
+<svg viewBox="0 0 1000 250" role="img" aria-label="Your code calls a start method once; the instance is called every cycle; Busy is TRUE for several cycles while the file is opened, read or written and closed; then Busy falls and Done or Error is TRUE" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, system-ui, sans-serif">
+  <defs>
+    <marker id="arrg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4B734C"/></marker>
+  </defs>
+  <rect width="1000" height="250" fill="#fff"/>
+  <g font-size="13" font-weight="600" fill="#2B2B2B">
+    <text x="20" y="58">Your code</text>
+    <text x="20" y="118">Busy</text>
+    <text x="20" y="168">Done</text>
+    <text x="20" y="218">Error</text>
+  </g>
+  <!-- cycle ticks: the instance call -->
+  <g stroke="#B9B9B9" stroke-width="1">
+    <path d="M180,30 V230"/><path d="M240,30 V230"/><path d="M300,30 V230"/><path d="M360,30 V230"/><path d="M420,30 V230"/>
+    <path d="M480,30 V230"/><path d="M540,30 V230"/><path d="M600,30 V230"/><path d="M660,30 V230"/><path d="M720,30 V230"/>
+    <path d="M780,30 V230"/><path d="M840,30 V230"/><path d="M900,30 V230"/><path d="M960,30 V230"/>
+  </g>
+  <text x="570" y="22" font-size="12" fill="#6D6D6D" text-anchor="middle">one tick per PLC cycle: call the instance every cycle</text>
+  <!-- the start call -->
+  <rect x="190" y="40" width="150" height="28" rx="5" fill="#4B734C"/>
+  <text x="265" y="59" font-size="13" fill="#fff" text-anchor="middle" font-weight="600">ReadFromFile()</text>
+  <rect x="738" y="40" width="210" height="28" rx="5" fill="#F2F6F2" stroke="#4B734C" stroke-width="1.6"/>
+  <text x="843" y="59" font-size="13" fill="#365538" text-anchor="middle" font-weight="600">NOT Busy: check Error</text>
+  <!-- traces -->
+  <g fill="none" stroke-width="2.4">
+    <path d="M150,124 H240 V102 H720 V124 H970" stroke="#4B734C"/>
+    <path d="M150,174 H720 V152 H970" stroke="#4B734C"/>
+    <path d="M150,224 H970" stroke="#6D6D6D" stroke-dasharray="6 4"/>
+  </g>
+  <g font-size="12" fill="#6D6D6D">
+    <text x="480" y="96" text-anchor="middle">open, read or write, close</text>
+    <text x="845" y="146" text-anchor="middle">result is ready</text>
+    <text x="845" y="210" text-anchor="middle">or Error rises instead</text>
+  </g>
+</svg>
+<figcaption>A read on the reader. The start method only asks for the operation. The instance call does the work, a step per cycle. When <code>Busy</code> falls, look at <code>Error</code> before you use the result.</figcaption>
+</figure>
+
+<p>Five rules hold for every block:</p>
+<ol class="steps">
+  <li><strong>Call the instance every cycle</strong>, for example <code>recipeReader();</code> at the top of your program, whether or not an operation is running. Nothing moves without it.</li>
+  <li><strong>Start with a method</strong>: <code>ReadFromFile()</code>, <code>WriteToFile()</code>, <code>GetFile()</code> or <code>Check()</code>. A start is ignored while the instance is busy.</li>
+  <li><strong>Wait until <code>Busy</code> is FALSE</strong>, then read <code>Error</code>. On the JSON reader, <code>Done</code> can be TRUE as well as <code>Error</code>: the file was read but could not be used.</li>
+  <li><strong>One operation at a time per instance.</strong> Use a second instance to work on a second file at the same time.</li>
+  <li><strong>Paths are on the PLC</strong>, not on the engineering PC: <code>C:\Data\Recipe.json</code> is on the target's disk. On the user-mode runtime the PLC is the PC itself.</li>
+</ol>
+
+<h2 id="before"><span class="n">3</span>Before you start</h2>
+
+<h3>Install the library</h3>
+<p>You need TwinCAT 3.1.4026 or later. The library needs <strong>Intecre.Utilities</strong> 4.1 or later, for its logging and base class. The Beckhoff libraries it uses (<code>Tc2_Standard</code>, <code>Tc2_System</code>, <code>Tc2_Utilities</code> and <code>Tc3_JsonXml</code>) come with every 4026 XAE.</p>
+<ul>
+  <li><strong>From a release.</strong> Download <code>Intecre_File.library</code> from the <a href="https://github.com/Intecre/twincat-files/releases">GitHub releases</a> and install it with <em>PLC &gt; Library Repository &gt; Install</em>. Install Intecre.Utilities the same way, from the <a href="https://github.com/Intecre/twincat-utils/releases">twincat-utils releases</a>.</li>
+  <li><strong>As a TcPkg package.</strong> The release also carries <code>Intecre.File.1.3.1.nupkg</code>, which declares its dependencies. Put it in a folder, add that folder as a source with <code>tcpkg source add -n local -s &lt;folder&gt;</code>, and run <code>tcpkg install Intecre.File</code>. TcPkg then wants the Intecre.Utilities package too: put its <code>.nupkg</code> from the twincat-utils release in the same folder.</li>
+</ul>
+<p>Then, in your PLC project, choose <em>References &gt; Add library &gt; Intecre.File (Intecre Ltd)</em>.</p>
+
+<h3>Turn the log on</h3>
+<p>The blocks report problems through the Intecre.Utilities logger, which is off until you set a level. Reference Intecre.Utilities as well, and set the level once at start-up:</p>
+<pre><code>Intecre_Utilities.LogConfig.LogLevel := Intecre_Utilities.E_LogSeverity.Warning;</code></pre>
+<p>Messages from the JSON blocks start with the instance path, for example <code>MAIN.recipeReader: </code>. They are listed in <a href="#messages">section 11</a>.</p>
+
+<h3>Know the sizes</h3>
+<p>Two sizes are library parameters. You can change them for your project on the <em>Parameters</em> tab of the Intecre.File reference:</p>
+<table>
+  <tr><th style="width: 290px">Parameter</th><th class="num" style="width: 90px">Default</th><th>What it limits</th></tr>
+  <tr><td><code>JsonParams.JSON_DOC_SIZE</code></td><td class="num">10000</td><td>The characters of JSON one reader or writer can hold, so the largest structure it can save or load. Allow the structure's size plus at least 20&nbsp;% for the names and punctuation.</td></tr>
+  <tr><td><code>Param.TXT_FILE_MAX_STRING_LENGTH</code></td><td class="num">300</td><td>The string type <code>TxtFileString</code> that <code>T_TxtFileWriter.Write</code> takes.</td></tr>
+</table>
+<p>Other sizes are fixed: a path is a <code>T_MaxString</code> (255 characters), except in <code>ST_PersistenceOptions</code> (80), and a CSV field is a <code>STRING</code> (80). See <a href="#sizing">section 10</a>.</p>
+
+<h2 id="start"><span class="n">4</span>Quick start: a recipe file</h2>
+
+<p>This keeps a recipe in <code>C:\Data\Recipe.json</code>. At start-up it loads the file, or creates it from the recipe's initial values. After that it saves the recipe on request, and also on its own after the recipe has changed.</p>
+
+<ol class="steps">
+  <li><strong>Declare the structure</strong> as a type of its own. The block finds it by the type's name.
+<pre><code><span class="k">TYPE</span> ST_Recipe :
+<span class="k">STRUCT</span>
+  Name : <span class="k">STRING</span>;
+  Speed : <span class="k">LREAL</span> := 1.0;
+  Count : <span class="k">DINT</span>;
+  Enabled : <span class="k">BOOL</span>;
+<span class="k">END_STRUCT</span>
+<span class="k">END_TYPE</span></code></pre></li>
+
+  <li><strong>Declare the recipe, its options and the block.</strong>
+<pre><code><span class="k">PROGRAM</span> PRG_Recipe
+<span class="k">VAR</span>
+  recipe : ST_Recipe;
+  recipeOptions : ST_PersistenceOptions := (
+    NameOfStructureType := 'ST_Recipe',   <span class="c">// the type, not the variable</span>
+    FilePath := 'C:\Data\Recipe.json'
+  );
+  recipeFile : T_StructPersistence;
+  saveRequested : <span class="k">BOOL</span>;
+<span class="k">END_VAR</span></code></pre></li>
+
+  <li><strong>Call it every cycle.</strong> Give it the recipe's address and size each time, so an online change that moves the recipe cannot leave it pointing at the old place.
+<pre><code>recipeOptions.AddressOfStruct := ADR(recipe);
+recipeOptions.SizeOfStruct := SIZEOF(recipe);
+recipeFile(Options := recipeOptions);
+
+<span class="k">IF</span> saveRequested <span class="k">AND</span> recipeFile.WriteToFile() <span class="k">THEN</span>
+  saveRequested := FALSE;
+<span class="k">END_IF</span></code></pre>
+    <code>WriteToFile()</code> returns FALSE while a read or write is running. Keep asking, as here, until it returns TRUE.</li>
+
+  <li><strong>Run it.</strong> The first time, there is no file: <code>WriteSuccess</code> and <code>FileCreated</code> rise and the file holds the initial values. After a restart, <code>ReadSuccess</code> rises and the recipe holds what the file held.
+<pre class="out"><code><span class="o">{"Name":"","Speed":1.0,"Count":0,"Enabled":false}</span></code></pre></li>
+</ol>
+
+<div class="note">
+  <strong>Leave the recipe alone just after the read</strong>
+  <code>ReadSuccess</code> rises a few cycles before the block has finished with the file. A change in those cycles can be taken as what the file holds, and then it is not saved on its own (<a href="#limits">section 12</a>). Wait until <code>WriteToFile()</code> would be accepted, or about half a second, before you change the structure from code.
+</div>
+
+<h2 id="persist"><span class="n">5</span>Keeping a structure in a file: <code>T_StructPersistence</code></h2>
+
+<p>The block takes its settings from the <code>Options</code> input. It reads the path, the type name, and whether to create the file, once, on its first call. The other options it reads every cycle.</p>
+
+<table>
+  <tr><th style="width: 250px">Option</th><th class="num" style="width: 80px">Default</th><th>Meaning</th></tr>
+  <tr><td><code>AddressOfStruct</code>, <code>SizeOfStruct</code></td><td class="num">&ndash;</td><td><code>ADR(recipe)</code> and <code>SIZEOF(recipe)</code>.</td></tr>
+  <tr><td><code>NameOfStructureType</code></td><td class="num">&ndash;</td><td>The name of the structure's type, such as <code>'ST_Recipe'</code>. Not the variable's name.</td></tr>
+  <tr><td><code>FilePath</code></td><td class="num">&ndash;</td><td>The full path on the PLC. At most 80 characters (<a href="#limits">section 12</a>).</td></tr>
+  <tr><td><code>CreateFileIfDoesntExist</code></td><td class="num">TRUE</td><td>When the first read finds no file, write the structure as it is now.</td></tr>
+  <tr><td><code>AutoWriteOnDifference</code></td><td class="num">TRUE</td><td>Save the structure on its own after it changes.</td></tr>
+  <tr><td><code>AutoWriteCheckTime</code></td><td class="num">T#2M</td><td>How often to look for a change. The block compares a CRC of the structure with the CRC of what it last read or wrote.</td></tr>
+  <tr><td><code>AutoWriteDebounceTime</code></td><td class="num">T#30S</td><td>After a change is seen, how long the structure must stay the same before it is written. An operator who edits several values in turn gets one write, not several.</td></tr>
+</table>
+
+<table>
+  <tr><th style="width: 250px">Output or method</th><th>Meaning</th></tr>
+  <tr><td><code>ReadSuccess</code></td><td>The last read filled the structure from the file.</td></tr>
+  <tr><td><code>WriteSuccess</code></td><td>The last write saved the structure.</td></tr>
+  <tr><td><code>FileCreated</code></td><td>The file was missing and has been written for the first time.</td></tr>
+  <tr><td><code>ReadFromFile() : BOOL</code></td><td>Read the file into the structure again. FALSE, and nothing happens, while a read or write is running.</td></tr>
+  <tr><td><code>WriteToFile() : BOOL</code></td><td>Save the structure now. FALSE, and nothing happens, while a read or write is running.</td></tr>
+</table>
+
+<p>With the defaults, a change is on disk between 30&nbsp;s and about 2&nbsp;min 30&nbsp;s after the last edit. Call <code>WriteToFile()</code> when it must be on disk sooner, for example when an operator presses <em>Save</em>.</p>
+
+<div class="warn">
+  <strong>A file from another version of the structure</strong>
+  If you add a member to the type, an old file has no value for it. If you rename one, the file's value is not found. Check after the first read that the structure holds what you expect, and write it back to bring the file up to date.
+</div>
+
+<h2 id="json"><span class="n">6</span>JSON files</h2>
+
+<p>Use the reader and writer directly when you want to choose the moment of every read and write, keep several files for one type, or read a file that a PC wrote.</p>
+
+<div class="two">
+<div>
+<p class="cap">Writing</p>
+<pre><code><span class="k">VAR</span>
+  recipeWriter : T_StructToJsonFileWriter;
+<span class="k">END_VAR</span>
+
+recipeWriter();
+
+<span class="k">IF</span> save <span class="k">THEN</span>
+  save := FALSE;
+  recipeWriter.SetFileParams(
+    FilePath := 'C:\Data\Recipe.json',
+    StructureName := 'ST_Recipe',
+    PointerToStructure := ADR(recipe),
+    SizeOfStructure := SIZEOF(recipe)
+  );
+  recipeWriter.WriteToFile();
+<span class="k">END_IF</span></code></pre>
+</div>
+<div>
+<p class="cap">Reading</p>
+<pre><code><span class="k">VAR</span>
+  recipeReader : T_StructFromJsonFileReader;
+<span class="k">END_VAR</span>
+
+recipeReader();
+
+<span class="k">IF</span> load <span class="k">THEN</span>
+  load := FALSE;
+  recipeReader.SetFileParams(
+    FilePath := 'C:\Data\Recipe.json',
+    StructureName := 'ST_Recipe',
+    PointerToStructure := ADR(recipe),
+    SizeOfStructure := SIZEOF(recipe)
+  );
+  recipeReader.ReadFromFile();
+<span class="k">END_IF</span></code></pre>
+</div>
+</div>
+
+<p>Then wait for <code>Busy</code> to fall. The writer has <code>Done</code> or <code>Error</code>. On the reader, <code>Error</code> decides: when it is FALSE and <code>Done</code> is TRUE, the structure holds the file. <code>FileExists</code> says whether the file was there.</p>
+
+<table>
+  <tr><th style="width: 250px">Member</th><th>Reader</th><th>Writer</th></tr>
+  <tr><td><code>SetFileParams(...)</code></td><td colspan="2">The path, the type's name, and the structure's address and size. Call it before the first read or write, and again to change file or structure.</td></tr>
+  <tr><td><code>ReadFromFile()</code> / <code>WriteToFile()</code></td><td>Starts a read. The structure changes only when the whole file has been read and parsed.</td><td>Turns the structure into JSON at once, then starts the write. Changes after the call are not in the file.</td></tr>
+  <tr><td><code>Busy</code>, <code>Done</code>, <code>Error</code></td><td colspan="2">As in <a href="#how">section 2</a>. <code>Error</code> stays TRUE until <code>Reset</code>.</td></tr>
+  <tr><td><code>FileExists</code></td><td>FALSE when the last read found no file.</td><td>&ndash;</td></tr>
+  <tr><td><code>Reset()</code></td><td colspan="2">Clears <code>Error</code>. Both blocks refuse to start while <code>Error</code> is TRUE. On the reader, call <code>Reset()</code> and <code>ReadFromFile()</code> one after the other (<a href="#limits">section 12</a>).</td></tr>
+</table>
+
+<h3>What the reader refuses</h3>
+<ul>
+  <li><strong>A file longer than <code>JSON_DOC_SIZE</code>.</strong> The reader sets <code>Error</code>, logs the file's length and the limit, and leaves the structure as it was. Before 1.3.1 it copied the whole file and overwrote the memory after its buffer.</li>
+  <li><strong>A file that is not valid JSON for the type.</strong> <code>Error</code> is set. The structure may hold some of the file's values, so do not use it.</li>
+  <li><strong>A missing file.</strong> <code>Error</code> is set and <code>FileExists</code> is FALSE.</li>
+</ul>
+
+<h3>The file the writer makes</h3>
+<p>One line of compact JSON, with no line end and, from 1.3.1, no NUL byte at the end. Numbers are written as numbers, a <code>BOOL</code> as <code>true</code> or <code>false</code>, and a string in quotes. The writer replaces the file if it exists.</p>
+
+<h2 id="csv"><span class="n">7</span>CSV files</h2>
+
+<h3>Writing: <code>T_CsvFileWriter</code></h3>
+<pre><code><span class="k">VAR</span>
+  logWriter : T_CsvFileWriter;
+<span class="k">END_VAR</span>
+
+logWriter();
+
+<span class="k">IF</span> logNow <span class="k">AND</span> <span class="k">NOT</span> logWriter.Busy <span class="k">THEN</span>
+  logNow := FALSE;
+  logWriter.SetFileParams(FilePath := 'C:\Data\Log.csv', Separator := ASCI_COMMA);
+  logWriter.SetFileOpenMode(Append := TRUE);
+  logWriter.ClearBuffer();
+  logWriter.AddStringField(sFieldString := 'Batch 7');
+  logWriter.AddStringField(sFieldString := LREAL_TO_STRING(speed));
+  logWriter.AddStringField(sFieldString := DINT_TO_STRING(count));
+  logWriter.WriteToFile();   <span class="c">// ends the row, then writes</span>
+<span class="k">END_IF</span></code></pre>
+<pre class="out"><code><span class="o">Batch 7,2.5,7</span></code></pre>
+
+<table>
+  <tr><th style="width: 290px">Member</th><th>Meaning</th></tr>
+  <tr><td><code>SetFileParams(FilePath, Separator)</code></td><td>The path, and <code>ASCI_COMMA</code> or <code>ASCI_SEMI_COLON</code>. Any other separator gives a semicolon.</td></tr>
+  <tr><td><code>SetFileOpenMode(Append)</code></td><td>TRUE adds to the end of the file. FALSE, the default, replaces the file.</td></tr>
+  <tr><td><code>ClearBuffer()</code></td><td>Empties the buffer and sets <code>Row</code> and <code>Column</code> to 0. Call it before building the next file. It does nothing while <code>Busy</code>.</td></tr>
+  <tr><td><code>AddStringField(sFieldString)</code></td><td>Adds a field, with a separator before it unless it is the first on the row.</td></tr>
+  <tr><td><code>NewLine()</code></td><td>Ends the row with CR LF.</td></tr>
+  <tr><td><code>WriteToFile()</code></td><td>Ends the row, then writes the buffer. So a file always ends with a line end, and you do not call <code>NewLine()</code> after the last field.</td></tr>
+  <tr><td><code>Row</code>, <code>Column</code></td><td>Where the next field goes, counted from 0.</td></tr>
+  <tr><td><code>Busy</code>, <code>Done</code>, <code>Error</code>, <code>ErrorId</code></td><td>As in <a href="#how">section 2</a>. <code>ErrorId</code> is the ADS error from the file system, such as 1804 for a path that is not there.</td></tr>
+</table>
+
+<div class="warn">
+  <strong>Build the next file only when the last write has finished</strong>
+  While <code>Busy</code> is TRUE, the buffer refuses new fields and they are lost without a message. Check <code>NOT Busy</code> before <code>ClearBuffer()</code>, as above.
+</div>
+
+<div class="warn">
+  <strong>The separator is shared</strong>
+  <code>SetFileParams</code> sets <code>Tc2_Utilities.DEFAULT_CSV_FIELD_SEP</code>, which is one global for the whole PLC. Every CSV reader and writer uses the separator of the last <code>SetFileParams</code> call. Use one separator throughout, or set it just before each file.
+</div>
+
+<h3>Reading: <code>T_CsvFileReader</code></h3>
+<pre><code>csvReader();
+
+<span class="k">CASE</span> step <span class="k">OF</span>
+
+  0:
+
+    csvReader.SetFileParams(FilePath := 'C:\Data\Points.csv', Separator := ASCI_COMMA);
+    csvReader.GetFile();
+    step := 10;
+
+  10:
+
+    <span class="k">IF</span> csvReader.Busy <span class="k">THEN</span>
+      <span class="k">RETURN</span>;
+    <span class="k">END_IF</span>
+
+    <span class="k">IF</span> csvReader.Error <span class="k">THEN</span>
+      step := 100;   <span class="c">// look at csvReader.ErrorId and csvReader.FileExists</span>
+      <span class="k">RETURN</span>;
+
+    <span class="k">END_IF</span>
+
+    csvReader.NextField();
+    <span class="k">WHILE</span> <span class="k">NOT</span> csvReader.Eof <span class="k">DO</span>
+      points[csvReader.Row, csvReader.Column] := csvReader.Field;
+      csvReader.NextField();
+    <span class="k">END_WHILE</span>
+    step := 20;
+
+<span class="k">END_CASE</span></code></pre>
+
+<p><code>GetFile()</code> reads the whole file into memory. Then each <code>NextField()</code> moves on by one field, at once, with no waiting, so a loop can take the whole file in one cycle. For a large file, stop the loop after a number of fields and carry on in the next cycle, so the task keeps its cycle time.</p>
+
+<table>
+  <tr><th style="width: 250px">Member</th><th>Meaning</th></tr>
+  <tr><td><code>SetFileParams(FilePath, Separator)</code></td><td>As for the writer, and the separator is the same shared global.</td></tr>
+  <tr><td><code>GetFile()</code></td><td>Starts reading the file and goes back to the first field.</td></tr>
+  <tr><td><code>Busy</code>, <code>Error</code>, <code>ErrorId</code>, <code>FileExists</code></td><td>As in <a href="#how">section 2</a>. Check <code>Error</code> before parsing: after a failed read, <code>ReadyForParsing</code> can still be TRUE (<a href="#limits">section 12</a>).</td></tr>
+  <tr><td><code>ReadyForParsing</code></td><td>The file has been read.</td></tr>
+  <tr><td><code>NextField()</code></td><td>Moves to the next field. The first call gives the first field.</td></tr>
+  <tr><td><code>Field</code>, <code>Row</code>, <code>Column</code></td><td>The current field, and where it is, counted from 0.</td></tr>
+  <tr><td><code>Eof</code></td><td>TRUE once <code>NextField()</code> has gone past the last field. <code>Field</code> then holds nothing useful.</td></tr>
+</table>
+
+<h2 id="txt"><span class="n">8</span>Text files: <code>T_TxtFileWriter</code></h2>
+
+<pre><code>textWriter();
+
+<span class="k">IF</span> report <span class="k">AND</span> <span class="k">NOT</span> textWriter.Busy <span class="k">THEN</span>
+  report := FALSE;
+  textWriter.SetFileParams(FilePath := 'C:\Data\Shift.txt');
+  textWriter.ClearBuffer();
+  textWriter.WriteLine('Shift report');
+  textWriter.Write('Parts made: ');
+  textWriter.WriteLine(DINT_TO_STRING(partsMade));
+  textWriter.WriteToFile();
+<span class="k">END_IF</span></code></pre>
+<pre class="out"><code><span class="o">Shift report
+Parts made: 412</span></code></pre>
+
+<table>
+  <tr><th style="width: 250px">Member</th><th>Meaning</th></tr>
+  <tr><td><code>SetFileParams(FilePath)</code></td><td>The full path on the PLC.</td></tr>
+  <tr><td><code>SetFileOpenMode(Append)</code></td><td>TRUE adds to the end of the file. FALSE, the default, replaces the file.</td></tr>
+  <tr><td><code>ClearBuffer()</code></td><td>Empties the buffer and sets <code>Row</code> to 0. It does nothing while <code>Busy</code>.</td></tr>
+  <tr><td><code>Write(Entry)</code></td><td>Adds text to the current line. At most 255 characters a call (<a href="#limits">section 12</a>).</td></tr>
+  <tr><td><code>WriteLine(Entry)</code></td><td>Adds text and ends the line with CR LF.</td></tr>
+  <tr><td><code>NewLine()</code></td><td>Ends the line.</td></tr>
+  <tr><td><code>WriteToFile()</code></td><td>Writes the buffer. Unlike the CSV writer, it adds no line end of its own.</td></tr>
+  <tr><td><code>Row</code></td><td>The number of lines ended so far.</td></tr>
+  <tr><td><code>Busy</code>, <code>Done</code>, <code>Error</code>, <code>ErrorId</code></td><td>As for the CSV writer. A folder that does not exist gives <code>Error</code>: the writer does not create folders.</td></tr>
+</table>
+
+<h2 id="exists"><span class="n">9</span>Checking that a file exists: <code>T_CheckFileExists</code></h2>
+
+<pre><code>fileCheck();
+
+<span class="k">IF</span> checkNow <span class="k">THEN</span>
+  checkNow := FALSE;
+  fileCheck.Check(Path := 'C:\Data\Recipe.json');
+<span class="k">END_IF</span>
+
+<span class="k">IF</span> <span class="k">NOT</span> fileCheck.Busy <span class="k">THEN</span>
+  recipeFileFound := fileCheck.FileExists;
+<span class="k">END_IF</span></code></pre>
+
+<p>The block opens the file for reading, and closes it again if that worked. <code>FileExists</code> is FALSE while <code>Busy</code> is TRUE. A file that is there but cannot be opened, because it is locked or protected, reads as not there.</p>
+
+<h2 id="sizing"><span class="n">10</span>Sizes and memory</h2>
+
+<table>
+  <tr><th style="width: 290px">What</th><th>Size</th></tr>
+  <tr><td>JSON a reader or writer can hold</td><td><code>JsonParams.JSON_DOC_SIZE</code> characters, 10&nbsp;000 by default. Each reader and each writer has its own buffer of that size, and <code>T_StructPersistence</code> has one of each, so about 20&nbsp;kB of PLC memory per persistence block with the default.</td></tr>
+  <tr><td>A path</td><td>255 characters (<code>T_MaxString</code>). 80 in <code>ST_PersistenceOptions.FilePath</code>.</td></tr>
+  <tr><td>A CSV field, written or read</td><td>80 characters (<code>STRING</code>).</td></tr>
+  <tr><td>Text a <code>T_TxtFileWriter.Write</code> call adds</td><td>255 characters.</td></tr>
+  <tr><td>A file being read</td><td>Held whole in router memory while the block works on it, and freed at the next read.</td></tr>
+  <tr><td>A file being built</td><td>Grows in router memory as you add to it, and is freed by <code>ClearBuffer()</code>.</td></tr>
+</table>
+
+<p>To see what a structure needs, write it once and look at the file's size. To raise <code>JSON_DOC_SIZE</code>, open the Intecre.File reference in your project, choose the <em>Parameters</em> tab, change the value and build. Large files and many blocks use router memory: raise it in the TwinCAT system settings if you see <code>Out of memory</code> messages.</p>
+
+<h2 id="messages"><span class="n">11</span>Messages and what to do</h2>
+
+<p>Turn the log on first (<a href="#before">section 3</a>). Messages go to the TwinCAT log, which shows in XAE's Error List and output window. A message from a JSON block starts with the instance path:</p>
+<pre class="out"><code><span class="o">MAIN.recipeReader: JSON file not read: it is 12480 bytes, more than JsonParams.JSON_DOC_SIZE (10000). Increase JSON_DOC_SIZE in the Intecre.File library parameters.</span></code></pre>
+
+<h3>From the JSON blocks and <code>T_StructPersistence</code></h3>
+<table>
+  <tr><th style="width: 46%">Message</th><th>What to do</th></tr>
+  <tr><td><code>JSON file not read: it is N bytes, more than JsonParams.JSON_DOC_SIZE (M). Increase JSON_DOC_SIZE in the Intecre.File library parameters.</code></td><td>The file is too long for the reader. The structure is unchanged. Raise <code>JSON_DOC_SIZE</code> (<a href="#sizing">section 10</a>), or check that the path names the file you meant.</td></tr>
+  <tr><td><code>Error while adding to write buffer. Try increasing JsonDoc size using JsonParams in library, or TC mailbox size.</code></td><td>The structure's JSON is longer than <code>JSON_DOC_SIZE</code>. Nothing was written. Raise the parameter.</td></tr>
+  <tr><td><code>Error while creating json file from structure. Check argument for SetFileParams</code></td><td>The type name is wrong, or is the variable's name instead of the type's, or the address or size is wrong. Check <code>StructureName</code> or <code>NameOfStructureType</code>.</td></tr>
+  <tr><td><code>Cannot read from file while block is in an error state. Reset first</code><br><code>Cannot write to file while block is in an error state. Reset first</code></td><td>Call <code>Reset()</code>, then start again. On the reader, call both one after the other (<a href="#limits">section 12</a>).</td></tr>
+  <tr><td><code>ReadFromFile error, try Rest or wait until not busy</code></td><td>A read was started while one was running. Wait for <code>Busy</code> to fall, then <code>Reset()</code> and read again.</td></tr>
+  <tr><td><code>Error  starting file write. Try calling Reset first.</code></td><td>A write was started while one was running. Wait for <code>Busy</code> to fall.</td></tr>
+  <tr><td><code>Reset called</code> (Debug)</td><td>Not an error.</td></tr>
+</table>
+
+<h3>From the file blocks underneath every writer</h3>
+<p>These messages come without an instance path.</p>
+<table>
+  <tr><th style="width: 46%">Message</th><th>What to do</th></tr>
+  <tr><td><code>Invalid data pointer passed to AppendToBuffer method.</code></td><td>Empty text was added, for example <code>AddStringField('')</code> or <code>Write('')</code>. Nothing is added, and an empty CSV field still gets its separator, so the file is right and you can ignore it. From the JSON writer it comes with the buffer message above.</td></tr>
+  <tr><td><code>Out of memory trying to extend write buffer</code></td><td>Router memory is full. Clear buffers you no longer need, write smaller files, or raise the router memory (<a href="#sizing">section 10</a>).</td></tr>
+  <tr><td><code>Illegal State request in FB_FileBase...</code><br><code>Illegal State request in FB_FileWriteBase...</code></td><td>Should not happen. Please report it with what the block was doing.</td></tr>
+</table>
+
+<h3>Symptoms</h3>
+<table>
+  <tr><th style="width: 46%">What you see</th><th>What to do</th></tr>
+  <tr><td>Nothing in the log at all</td><td><code>LogConfig.LogLevel</code> is still <code>None</code>, the default (<a href="#before">section 3</a>).</td></tr>
+  <tr><td>The file is not where you expected</td><td>The path is on the PLC, not on the engineering PC. On the user-mode runtime it is on the PC itself.</td></tr>
+  <tr><td>Nothing happens after a start method</td><td>The instance is not called every cycle, or it was busy and the start was ignored.</td></tr>
+  <tr><td><code>Error</code> with <code>ErrorId</code> 1804</td><td>The file or its folder is not there. The writers do not create folders.</td></tr>
+  <tr><td>The JSON reader has <code>Done</code> and <code>Error</code> both TRUE</td><td>The file was read but not used: too long or not valid JSON for the type. The messages above say which.</td></tr>
+  <tr><td>A CSV file has an extra empty row</td><td><code>NewLine()</code> was called after the last field. <code>WriteToFile()</code> ends the row itself.</td></tr>
+  <tr><td>One CSV file has the other file's separator</td><td>The separator is one global (<a href="#csv">section 7</a>).</td></tr>
+  <tr><td>A JSON file written before 1.3.1 ends in a 0 byte, and a PC tool will not open it</td><td>Write it again with 1.3.1 or later. The reader reads either.</td></tr>
+  <tr><td>A change to a persistent structure was never saved</td><td>It was made just as the first read finished (<a href="#start">section 4</a>), or <code>AutoWriteOnDifference</code> is FALSE.</td></tr>
+</table>
+
+<h2 id="limits"><span class="n">12</span>Limits and known issues</h2>
+
+<p>The TestRunner project in this repository has a TcUnit suite for every block, and each test states the intended behaviour. The issues below are the tests that fail today. They are listed so that you can work around them until they are fixed.</p>
+
+<table>
+  <tr><th style="width: 32%">Issue</th><th>Work-around</th><th style="width: 24%">Test</th></tr>
+  <tr><td><code>T_StructPersistence</code>: <code>ReadSuccess</code> rises a few cycles before the read has finished. Until it has, <code>WriteToFile()</code> returns FALSE, and a change to the structure can be taken as what the file holds, so it is not written on its own.</td><td>Keep calling <code>WriteToFile()</code> until it returns TRUE. Leave the structure alone for about half a second after <code>ReadSuccess</code>.</td><td><code>Test_WriteToFileSavesTheCurrentStruct</code>, <code>Test_AutoWritesAfterTheStructChanges</code></td></tr>
+  <tr><td><code>T_StructPersistence</code>: after a read fails, for example because the file was missing and <code>CreateFileIfDoesntExist</code> is FALSE, <code>ReadFromFile()</code> fails again even when the file is now there.</td><td>Leave <code>CreateFileIfDoesntExist</code> TRUE, or use the reader directly.</td><td><code>Test_ReadsAgainAfterAFailedRead</code></td></tr>
+  <tr><td><code>ST_PersistenceOptions.FilePath</code> holds 80 characters. A longer path is cut short.</td><td>Keep the path to 80 characters.</td><td><code>Test_CreatesAFileWithAPathLongerThan80Characters</code></td></tr>
+  <tr><td><code>T_StructFromJsonFileReader</code>: after a file error, <code>Reset()</code> on its own does not hold. The next call of the instance sets <code>Error</code> again from the old read.</td><td>Call <code>Reset()</code> and <code>ReadFromFile()</code> one after the other, with no call of the instance in between. The code says this works; no test covers it yet.</td><td><code>Test_ReaderReadsAgainAfterAnErrorAndReset</code></td></tr>
+  <tr><td><code>T_CsvFileReader</code>: after a failed read, <code>ReadyForParsing</code> is TRUE.</td><td>Check <code>Error</code> first.</td><td><code>Test_MissingFileGivesAnError</code></td></tr>
+  <tr><td><code>T_CsvFileReader.Field</code> holds 80 characters. A longer field is cut short.</td><td>Keep fields to 80 characters.</td><td><code>Test_KeepsFieldsLongerThan80Characters</code></td></tr>
+  <tr><td><code>T_CsvFileWriter</code> does not quote a field. A field holding the separator splits into two.</td><td>Remove or replace the separator in the text first.</td><td><code>Test_QuotesAFieldContainingTheSeparator</code></td></tr>
+  <tr><td><code>ClearBuffer()</code> on both writers always returns FALSE, and <code>BufferClear</code> does not say that the buffer is clear. The buffer is cleared all the same.</td><td>Ignore the return value and <code>BufferClear</code>. Check <code>NOT Busy</code> before clearing.</td><td><code>Test_ClearBufferReportsTheBufferIsClear</code>, in both writer suites</td></tr>
+  <tr><td><code>T_TxtFileWriter.Write</code> keeps 255 characters of each call, although <code>TxtFileString</code> holds 300.</td><td>Split longer text over several <code>Write</code> calls.</td><td><code>Test_KeepsLinesLongerThan255Characters</code></td></tr>
+</table>
+
+<p>Other limits, by design:</p>
+<ul>
+  <li><strong>One operation at a time per instance</strong>, and starts are ignored while it is busy.</li>
+  <li><strong>The CSV separator is one global</strong> for the whole PLC, and only comma or semicolon.</li>
+  <li><strong>Files are read whole into memory</strong>, so a very large file needs router memory of its size.</li>
+  <li><strong>The writers replace or append whole files.</strong> They do not create folders, and do not write safely: a power cut during a write can leave the file short. Keep a copy of files you cannot lose.</li>
+  <li><strong>Checked on one setup.</strong> TwinCAT 3.1 build 4026 on the user-mode runtime, 10 November 2026: 35 TcUnit tests, of which 24 pass and 11 fail, the 11 being the issues above. Not yet checked: a real-time target, and a changed <code>JSON_DOC_SIZE</code> set through the library reference.</li>
+</ul>
+
+<h2 id="versions"><span class="n">13</span>Versions</h2>
+
+<table>
+  <tr><th style="width: 110px">Version</th><th>Changes</th></tr>
+  <tr><td>1.3.1.0</td><td>
+    <ul>
+      <li><code>T_StructFromJsonFileReader</code> refuses a file longer than <code>JSON_DOC_SIZE</code>: it sets <code>Error</code> and logs both sizes. Before, it overwrote its own settings and anything stored after its buffer.</li>
+      <li><code>T_StructToJsonFileWriter</code> no longer writes a NUL byte at the end of the file.</li>
+      <li><code>T_CheckFileExists.Check</code> takes a 255-character path again. The 1.2.0 fix had not reached the source.</li>
+      <li>The TcUnit TestRunner project, a TcPkg package, and this guide.</li>
+    </ul>
+    No interface changes. Upgrade by installing the new version: references to <code>Intecre.File, *</code> pick it up at the next build.</td></tr>
+  <tr><td>1.3.0.0</td><td>Not released. Moved to TwinCAT 4026, with the unit tests; its changes are in 1.3.1.0.</td></tr>
+  <tr><td>1.2.0</td><td><code>T_CheckFileExists</code> takes a <code>T_MaxString</code> path.</td></tr>
+  <tr><td>1.1.0</td><td>A simpler interface for <code>T_StructPersistence</code>.</td></tr>
+  <tr><td>1.0.3 to 1.0.5</td><td>A larger JSON buffer, the CSV reader's separator fixed, and the persistence success flags cleared when asked.</td></tr>
+</table>
+
+<footer>
+  Intecre File Handling &middot; the <code>Intecre.File</code> TwinCAT library, source and tests at <a href="https://github.com/Intecre/twincat-files">github.com/Intecre/twincat-files</a> &middot; Intecre Ltd.
+</footer>
+
+</main>
+</div>
+</body>
+</html>
