@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.18">
+<TcPlcObject Version="1.1.0.1">
   <POU Name="T_CheckFileExists" Id="{10b8c3da-74cc-0d0a-376a-46a39a0c040b}" SpecialFunc="None">
     <Declaration><![CDATA[FUNCTION_BLOCK T_CheckFileExists
 VAR
@@ -68,7 +68,7 @@ PROPERTY Busy : BOOL]]></Declaration>
     <Method Name="Check" Id="{81375c22-709d-0bef-2791-92804698eb08}">
       <Declaration><![CDATA[METHOD Check
 VAR_INPUT
-	Path : STRING; // path for new file. 
+	Path : Tc2_Utilities.T_MaxString; // path for new file. 
 END_VAR
 ]]></Declaration>
       <Implementation>
@@ -89,50 +89,5 @@ PROPERTY FileExists : BOOL]]></Declaration>
         </Implementation>
       </Get>
     </Property>
-    <LineIds Name="T_CheckFileExists">
-      <LineId Id="45" Count="0" />
-      <LineId Id="47" Count="0" />
-      <LineId Id="50" Count="0" />
-      <LineId Id="57" Count="0" />
-      <LineId Id="51" Count="0" />
-      <LineId Id="53" Count="0" />
-      <LineId Id="58" Count="0" />
-      <LineId Id="98" Count="0" />
-      <LineId Id="54" Count="0" />
-      <LineId Id="59" Count="0" />
-      <LineId Id="71" Count="1" />
-      <LineId Id="80" Count="1" />
-      <LineId Id="79" Count="0" />
-      <LineId Id="88" Count="0" />
-      <LineId Id="90" Count="3" />
-      <LineId Id="89" Count="0" />
-      <LineId Id="73" Count="0" />
-      <LineId Id="48" Count="0" />
-      <LineId Id="46" Count="0" />
-      <LineId Id="15" Count="0" />
-      <LineId Id="76" Count="1" />
-      <LineId Id="74" Count="0" />
-      <LineId Id="78" Count="0" />
-      <LineId Id="11" Count="0" />
-      <LineId Id="94" Count="3" />
-      <LineId Id="29" Count="0" />
-      <LineId Id="86" Count="1" />
-      <LineId Id="36" Count="0" />
-      <LineId Id="26" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CheckFileExists.Busy.Get">
-      <LineId Id="2" Count="0" />
-      <LineId Id="4" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CheckFileExists.Check">
-      <LineId Id="72" Count="0" />
-      <LineId Id="76" Count="0" />
-      <LineId Id="94" Count="0" />
-      <LineId Id="100" Count="0" />
-      <LineId Id="95" Count="0" />
-    </LineIds>
-    <LineIds Name="T_CheckFileExists.FileExists.Get">
-      <LineId Id="4" Count="0" />
-    </LineIds>
   </POU>
 </TcPlcObject>
