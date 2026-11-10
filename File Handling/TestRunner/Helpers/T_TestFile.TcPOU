@@ -12,6 +12,7 @@ VAR
   textToWrite : STRING(2000);
   textRead : STRING(2000);
   startOfTextRead : T_MaxString;
+  bytesRead : UDINT;
   request : (NoRequest, WriteRequest, ReadRequest, DeleteRequest);
   state : (Idle, Opening, Writing, Reading, Closing, Deleting);
   failed : BOOL;
@@ -54,6 +55,7 @@ END_VAR
 
     IF NOT fileRead.bBusy THEN
       failed := fileRead.bError;
+      bytesRead := fileRead.cbRead;
       MEMCPY(destAddr := ADR(startOfTextRead), srcAddr := ADR(textRead), n := SIZEOF(startOfTextRead) - 1);
       state := Closing;
     END_IF
@@ -186,6 +188,23 @@ state := Idle;
 ]]></ST>
       </Implementation>
     </Method>
+    <Property Name="LastByte" Id="{194f1f20-ba06-0e29-0f3f-d3dbe240b992}">
+      <Declaration><![CDATA[PROPERTY LastByte : BYTE // the last byte of the file the last Read read; 0 when it read nothing
+]]></Declaration>
+      <Get Name="Get" Id="{e618ffa6-a66b-088b-3d24-0f99a1ea7d0d}">
+        <Declaration><![CDATA[PUBLIC
+VAR
+END_VAR]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[IF bytesRead = 0 THEN
+  RETURN;
+END_IF
+
+LastByte := textRead[bytesRead - 1];
+]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
     <Property Name="Length" Id="{37f619eb-bc73-457a-9a73-6e58a43edabc}">
       <Declaration><![CDATA[PROPERTY Length : DINT
 ]]></Declaration>
@@ -212,6 +231,7 @@ END_IF
 path := FilePath;
 MEMSET(destAddr := ADR(textRead), fillByte := 0, n := SIZEOF(textRead));
 MEMSET(destAddr := ADR(startOfTextRead), fillByte := 0, n := SIZEOF(startOfTextRead));
+bytesRead := 0;
 failed := FALSE;
 request := ReadRequest;
 Read := TRUE;

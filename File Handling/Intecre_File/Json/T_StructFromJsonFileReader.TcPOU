@@ -24,28 +24,45 @@ _busy := fileRead.Busy;
 _done := fileRead.Done AND fileRead.BufferAvailable;
 _fileExists := fileRead.FileExists;
 
-doneTrig( CLK := _done );
+doneTrig(CLK := _done);
 
-IF doneTrig.Q AND NOT _error THEN
-	// clear jDoc
-	MEMSET( ADR( jDoc ), 0, SIZEOF( jDoc ) );
-	
-	// get the data into the doc
-	MEMCPY(
-		destAddr := ADR( jDoc ),
-		srcAddr := fileRead.DataBuffer,
-		n := fileRead.DataLength
-	);
-	
-	// conver the doc to the structure
-	_error S= NOT jsonDataTypeWriter.SetSymbolFromJson(
-		sJson := jDoc,
-		sDatatype := structureName,
-		nData := sizeOfStructure,
-		pData := pointerToStructure
-	);
+IF NOT doneTrig.Q OR _error THEN
+  RETURN;
+END_IF
 
-END_IF]]></ST>
+// jDoc holds JSON_DOC_SIZE characters and keeps its last byte for the terminating NUL.
+// A longer file would overwrite the settings stored after jDoc, so it is refused, not copied.
+IF fileRead.DataLength > SIZEOF(jDoc) - 1 THEN
+  _error := TRUE;
+  LogError(
+    F_Concat5(
+      'JSON file not read: it is ',
+      UDINT_TO_STRING(fileRead.DataLength),
+      ' bytes, more than JsonParams.JSON_DOC_SIZE (',
+      UDINT_TO_STRING(JsonParams.JSON_DOC_SIZE),
+      '). Increase JSON_DOC_SIZE in the Intecre.File library parameters.'
+    )
+  );
+  RETURN;
+
+END_IF
+
+MEMSET(destAddr := ADR(jDoc), fillByte := 0, n := SIZEOF(jDoc));
+
+MEMCPY(
+  destAddr := ADR(jDoc),
+  srcAddr := fileRead.DataBuffer,
+  n := fileRead.DataLength
+);
+
+// convert the doc to the structure
+_error S= NOT jsonDataTypeWriter.SetSymbolFromJson(
+  sJson := jDoc,
+  sDatatype := structureName,
+  nData := sizeOfStructure,
+  pData := pointerToStructure
+);
+]]></ST>
     </Implementation>
     <Property Name="Busy" Id="{4a4da27e-b4d5-0694-0f0a-993b08e51804}">
       <Declaration><![CDATA[{attribute 'monitoring' := 'call' }

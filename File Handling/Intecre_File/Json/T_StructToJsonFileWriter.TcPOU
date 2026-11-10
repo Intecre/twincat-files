@@ -81,55 +81,62 @@ THIS^.sizeOfStructure := SizeOfStructure; ]]></ST>
     <Method Name="WriteToFile" Id="{2a0ecc25-7db0-06f7-3c64-41521e99da6c}">
       <Declaration><![CDATA[METHOD PUBLIC WriteToFile // Attempt to write structure to file
 VAR
-	docSize : UDINT;
+	docSize : UDINT; // what CopyDocument returns: the JSON's length plus its terminating NUL
+	jsonLength : UDINT; // the bytes written to the file: the JSON without the NUL
 END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[IF _error THEN
-	LogError ( 'Cannot write to file while block is in an error state. Reset first' );
-	RETURN;
-	
+  LogError('Cannot write to file while block is in an error state. Reset first');
+  RETURN;
+
 END_IF
 
 jsonWriter.ResetDocument();
 
 _error S= NOT jsonDataTypeWriter.AddJsonValueFromSymbol(
-						fbWriter := jsonWriter,
-						sDatatype := structureName,
-						nData := sizeOfStructure,
-						pData := pointerToStructure	
-					);
-				
+  fbWriter := jsonWriter,
+  sDatatype := structureName,
+  nData := sizeOfStructure,
+  pData := pointerToStructure
+);
+
 IF _error THEN
-	LogError ( 'Error while creating json file from structure. Check argument for SetFileParams' );
-	RETURN;
-	
+  LogError('Error while creating json file from structure. Check argument for SetFileParams');
+  RETURN;
+
 END_IF
 
 docSize := jsonWriter.CopyDocument(
-					pDoc := jDoc,
-					nDoc := SIZEOF( jDoc )
-				);
+  pDoc := jDoc,
+  nDoc := SIZEOF(jDoc)
+);
+
+// CopyDocument counts the terminating NUL, which does not belong in the file.
+// It returns 0 when the JSON does not fit in jDoc; AppendToBuffer then refuses the empty data below.
+IF docSize > 0 THEN
+  jsonLength := docSize - 1;
+END_IF
 
 fileWrite.ClearWriteBuffer();
 
 _error S= NOT fileWrite.AppendToBuffer(
-						pDataForBuffer := ADR( jdoc ),
-						DataLength := docSize
-					);
+  pDataForBuffer := ADR(jDoc),
+  DataLength := jsonLength
+);
 
 IF _error THEN
-	LogError ( 'Error while adding to write buffer. Try increasing JsonDoc size using JsonParams in library, or TC mailbox size.' );
-	RETURN;
-	
-END_IF		
-			
+  LogError('Error while adding to write buffer. Try increasing JsonDoc size using JsonParams in library, or TC mailbox size.');
+  RETURN;
+
+END_IF
+
 _error S= NOT fileWrite.StartWrite();
 
 IF _error THEN
-	LogError ( 'Error  starting file write. Try calling Reset first.' );
-	RETURN;
-	
-END_IF	
+  LogError('Error  starting file write. Try calling Reset first.');
+  RETURN;
+
+END_IF
 ]]></ST>
       </Implementation>
     </Method>

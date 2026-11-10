@@ -7,6 +7,8 @@
       <ST><![CDATA[Test_WrittenStructReadsBackTheSame();
 Test_ReadingAMissingFileGivesAnError();
 Test_ReaderReadsAgainAfterAnErrorAndReset();
+Test_ReaderRefusesAFileLongerThanJsonDocSize();
+Test_WrittenFileEndsWithTheClosingBrace();
 ]]></ST>
     </Implementation>
     <Method Name="Test_ReaderReadsAgainAfterAnErrorAndReset" Id="{f8d77d5b-efc0-42f9-8347-cdbf9071eb24}">
@@ -94,6 +96,127 @@ END_CASE
 ]]></ST>
       </Implementation>
     </Method>
+    <Method Name="Test_ReaderRefusesAFileLongerThanJsonDocSize" Id="{1efaf554-ab2f-0971-0634-0978b408cc90}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_ReaderRefusesAFileLongerThanJsonDocSize
+VAR_INST
+  writer : T_TxtFileWriter;
+  reader : T_StructFromJsonFileReader;
+  testFile : T_TestFile;
+  recipe : ST_TestRecipe;
+  spaces : TxtFileString;
+  spacesWritten : UDINT;
+  timeout : TON;
+  step : INT;
+END_VAR
+VAR CONSTANT
+  SPACE : BYTE := 16#20;
+  SPACES_PER_WRITE : UDINT := 200; // T_TxtFileWriter.Write keeps at most 255 characters a call
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+writer();
+reader();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    // arrange: JSON for the recipe, then spaces until the file is longer than JSON_DOC_SIZE
+    MEMSET(destAddr := ADR(spaces), fillByte := SPACE, n := SPACES_PER_WRITE);
+    writer.SetFileParams(FilePath := F_TestFilePath('json_too_long.json'));
+    writer.Write(Entry := '{"Name":"from the long file","Speed":9.5,"Count":99,"Enabled":false}');
+
+    WHILE spacesWritten <= Intecre_File.JsonParams.JSON_DOC_SIZE DO
+      writer.Write(Entry := spaces);
+      spacesWritten := spacesWritten + SPACES_PER_WRITE;
+    END_WHILE
+
+    writer.WriteToFile();
+    step := 10;
+
+  10:
+
+    IF writer.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := writer.Error, Message := 'the long file was written');
+    recipe.Name := 'unchanged';
+    recipe.Speed := 1.5;
+    recipe.Count := 1;
+    recipe.Enabled := TRUE;
+    reader.SetFileParams(
+      FilePath := F_TestFilePath('json_too_long.json'),
+      StructureName := 'ST_TestRecipe',
+      PointerToStructure := ADR(recipe),
+      SizeOfStructure := SIZEOF(recipe));
+
+    // act
+    reader.ReadFromFile();
+    step := 20;
+
+  20:
+
+    IF reader.Busy THEN
+      RETURN;
+    END_IF
+
+    // assert: the file is refused and the recipe is untouched
+    AssertTrue(Condition := reader.Error, Message := 'a file longer than JSON_DOC_SIZE gives an error');
+    AssertEquals_STRING(Expected := 'unchanged', Actual := recipe.Name, Message := 'Name untouched');
+    AssertEquals_LREAL(Expected := 1.5, Actual := recipe.Speed, Delta := 0.0, Message := 'Speed untouched');
+    AssertEquals_DINT(Expected := 1, Actual := recipe.Count, Message := 'Count untouched');
+    AssertEquals_BOOL(Expected := TRUE, Actual := recipe.Enabled, Message := 'Enabled untouched');
+
+    // the reader's settings are untouched if, after a Reset, it reads a short file into the same recipe
+    testFile.Write(
+      FilePath := F_TestFilePath('json_too_long.json'),
+      Content := '{"Name":"from the short file","Speed":2.5,"Count":7,"Enabled":false}');
+    step := 30;
+
+  30:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := testFile.Error, Message := 'the short file was written');
+    reader.Reset();
+    step := 40;
+
+  40:
+
+    reader.ReadFromFile();
+    step := 50;
+
+  50:
+
+    IF reader.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := reader.Error, Message := 'the reader reads a short file after the refusal and a Reset');
+    AssertEquals_STRING(Expected := 'from the short file', Actual := recipe.Name, Message := 'structure name, address and size kept: Name read into the recipe');
+    AssertEquals_DINT(Expected := 7, Actual := recipe.Count, Message := 'structure name, address and size kept: Count read into the recipe');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
     <Method Name="Test_ReadingAMissingFileGivesAnError" Id="{7dd1cb2f-a78d-4e74-92db-94ea91458fa5}">
       <Declaration><![CDATA[METHOD PRIVATE Test_ReadingAMissingFileGivesAnError
 VAR_INST
@@ -150,6 +273,79 @@ CASE step OF
     AssertTrue(Condition := reader.Error, Message := 'a missing file gives an error');
     AssertFalse(Condition := reader.FileExists, Message := 'FileExists is FALSE');
     AssertFalse(Condition := reader.Done, Message := 'not done');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_WrittenFileEndsWithTheClosingBrace" Id="{30b86d51-e37a-05ce-2e51-fe9ae6d9e203}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_WrittenFileEndsWithTheClosingBrace
+VAR_INST
+  writer : T_StructToJsonFileWriter;
+  testFile : T_TestFile;
+  recipe : ST_TestRecipe;
+  timeout : TON;
+  step : INT;
+END_VAR
+VAR CONSTANT
+  CLOSING_BRACE : BYTE := 16#7D; // }
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+writer();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    // arrange
+    recipe.Name := 'last byte';
+    recipe.Speed := 3.25;
+    recipe.Count := 5;
+    recipe.Enabled := TRUE;
+    writer.SetFileParams(
+      FilePath := F_TestFilePath('json_last_byte.json'),
+      StructureName := 'ST_TestRecipe',
+      PointerToStructure := ADR(recipe),
+      SizeOfStructure := SIZEOF(recipe));
+
+    // act
+    writer.WriteToFile();
+    step := 10;
+
+  10:
+
+    IF writer.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := writer.Error, Message := 'struct written without an error');
+    testFile.Read(FilePath := F_TestFilePath('json_last_byte.json'));
+    step := 20;
+
+  20:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    // assert
+    AssertFalse(Condition := testFile.Error, Message := 'the written file reads back');
+    AssertEquals_BYTE(Expected := CLOSING_BRACE, Actual := testFile.LastByte, Message := 'the file ends with } and has no NUL after it');
     TEST_FINISHED_NAMED(__POUNAME());
 
 END_CASE

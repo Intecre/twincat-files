@@ -16,3 +16,6 @@
 
 # XAE solution upgrade report
 UpgradeLog*.htm
+
+# The TestRunner tests the Intecre.File built from this repo; a cached copy goes stale with every version
+File Handling/TestRunner/_Libraries/Intecre Ltd/Intecre.File/
