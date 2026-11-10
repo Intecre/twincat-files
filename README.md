@@ -49,7 +49,7 @@ The solution `Intecre-File.sln` holds two PLC projects:
 2. Build `TestRunner` and activate the configuration on a runtime. The TwinCAT user-mode runtime on the engineering PC is enough.
 3. Read the results in the Error List.
 
-Current state: 7 suites, 35 tests. 24 pass on 4026 with the user-mode runtime. The 11 that fail are known issues, listed with their work-arounds in section 12 of the [user guide](docs/user-guide.html#limits).
+Current state: 7 suites, 35 tests. 24 pass on 4026 with the user-mode runtime. The 11 that fail are known issues, listed with their work-arounds in section 11, Limits, of the [user guide](docs/user-guide.html#limits).
 
 ## Releasing
 
