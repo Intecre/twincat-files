@@ -1,0 +1,460 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.25">
+  <POU Name="T_TxtFileWriter_Tests" Id="{7fbccc29-5239-4771-95b5-4a203472f867}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK T_TxtFileWriter_Tests EXTENDS TcUnit.FB_TestSuite
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Test_WriteLineEndsEachLineWithCrlf();
+Test_WriteAddsToTheCurrentLine();
+Test_AppendModeAddsToTheEndOfTheFile();
+Test_OverwriteModeReplacesTheFile();
+Test_ClearBufferDiscardsWhatWasWritten();
+Test_ClearBufferReportsTheBufferIsClear();
+Test_KeepsLinesLongerThan255Characters();
+Test_MissingDirectoryGivesAnError();
+]]></ST>
+    </Implementation>
+    <Method Name="Test_WriteLineEndsEachLineWithCrlf" Id="{1cbaa2ab-a0d0-45c3-8e65-6dddd128cd6c}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_WriteLineEndsEachLineWithCrlf
+VAR_INST
+  writer : T_TxtFileWriter;
+  testFile : T_TestFile;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+writer();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    writer.SetFileParams(FilePath := F_TestFilePath('txt_write_line.txt'));
+    writer.WriteLine(Entry := 'first');
+    writer.WriteLine(Entry := 'second');
+    writer.WriteToFile();
+    step := 10;
+
+  10:
+
+    IF writer.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := writer.Error, Message := 'file written without an error');
+    testFile.Read(FilePath := F_TestFilePath('txt_write_line.txt'));
+    step := 20;
+
+  20:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertEquals_STRING(Expected := 'first$R$Nsecond$R$N', Actual := testFile.Text, Message := 'each line ends with CR LF');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_WriteAddsToTheCurrentLine" Id="{881c194e-8048-4c89-9fff-feea0829408c}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_WriteAddsToTheCurrentLine
+VAR_INST
+  writer : T_TxtFileWriter;
+  testFile : T_TestFile;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+writer();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    writer.SetFileParams(FilePath := F_TestFilePath('txt_write.txt'));
+    writer.Write(Entry := 'one');
+    writer.Write(Entry := 'two');
+    writer.NewLine();
+    writer.WriteToFile();
+    step := 10;
+
+  10:
+
+    IF writer.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := writer.Error, Message := 'file written without an error');
+    testFile.Read(FilePath := F_TestFilePath('txt_write.txt'));
+    step := 20;
+
+  20:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertEquals_STRING(Expected := 'onetwo$R$N', Actual := testFile.Text, Message := 'Write adds to the line, NewLine ends it');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_AppendModeAddsToTheEndOfTheFile" Id="{2483f214-f986-46e9-a818-6b97c57458a6}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_AppendModeAddsToTheEndOfTheFile
+VAR_INST
+  writer : T_TxtFileWriter;
+  testFile : T_TestFile;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+writer();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    testFile.Write(FilePath := F_TestFilePath('txt_append.txt'), Content := 'existing$R$N');
+    step := 5;
+
+  5:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := testFile.Error, Message := 'existing file written');
+    step := 6;
+
+  6:
+
+    writer.SetFileParams(FilePath := F_TestFilePath('txt_append.txt'));
+    writer.SetFileOpenMode(Append := TRUE);
+    writer.WriteLine(Entry := 'added');
+    writer.WriteToFile();
+    step := 10;
+
+  10:
+
+    IF writer.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := writer.Error, Message := 'file written without an error');
+    testFile.Read(FilePath := F_TestFilePath('txt_append.txt'));
+    step := 20;
+
+  20:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertEquals_STRING(Expected := 'existing$R$Nadded$R$N', Actual := testFile.Text, Message := 'appended after the existing line');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_OverwriteModeReplacesTheFile" Id="{3725b1c9-c8fb-4207-ae40-05b9b5f549a6}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_OverwriteModeReplacesTheFile
+VAR_INST
+  writer : T_TxtFileWriter;
+  testFile : T_TestFile;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+writer();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    testFile.Write(FilePath := F_TestFilePath('txt_overwrite.txt'), Content := 'old content$R$N');
+    step := 5;
+
+  5:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := testFile.Error, Message := 'existing file written');
+    step := 6;
+
+  6:
+
+    writer.SetFileParams(FilePath := F_TestFilePath('txt_overwrite.txt'));
+    writer.WriteLine(Entry := 'new');
+    writer.WriteToFile();
+    step := 10;
+
+  10:
+
+    IF writer.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := writer.Error, Message := 'file written without an error');
+    testFile.Read(FilePath := F_TestFilePath('txt_overwrite.txt'));
+    step := 20;
+
+  20:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertEquals_STRING(Expected := 'new$R$N', Actual := testFile.Text, Message := 'the old content is gone');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_ClearBufferDiscardsWhatWasWritten" Id="{5d519546-57e3-4baa-8e92-5c61c9ac6a42}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_ClearBufferDiscardsWhatWasWritten
+VAR_INST
+  writer : T_TxtFileWriter;
+  testFile : T_TestFile;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+writer();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    writer.SetFileParams(FilePath := F_TestFilePath('txt_clear_buffer.txt'));
+    writer.WriteLine(Entry := 'discarded');
+    writer.ClearBuffer();
+    writer.WriteLine(Entry := 'kept');
+    writer.WriteToFile();
+    step := 10;
+
+  10:
+
+    IF writer.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := writer.Error, Message := 'file written without an error');
+    testFile.Read(FilePath := F_TestFilePath('txt_clear_buffer.txt'));
+    step := 20;
+
+  20:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertEquals_STRING(Expected := 'kept$R$N', Actual := testFile.Text, Message := 'only the line written after ClearBuffer');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_ClearBufferReportsTheBufferIsClear" Id="{2b437a79-acf0-4bfa-8961-4cd7eeeafd01}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_ClearBufferReportsTheBufferIsClear
+VAR_INST
+  writer : T_TxtFileWriter;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+writer.WriteLine(Entry := 'line');
+AssertTrue(Condition := writer.ClearBuffer(), Message := 'ClearBuffer returns TRUE');
+AssertTrue(Condition := writer.BufferClear, Message := 'BufferClear after ClearBuffer');
+
+TEST_FINISHED_NAMED(__POUNAME());
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_KeepsLinesLongerThan255Characters" Id="{5d5d41f3-047f-4437-9d1b-13e025cef71d}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_KeepsLinesLongerThan255Characters
+VAR_INST
+  writer : T_TxtFileWriter;
+  testFile : T_TestFile;
+  timeout : TON;
+  step : INT;
+  longLine : TxtFileString;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+writer();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    MEMSET(destAddr := ADR(longLine), fillByte := 16#41, n := 300);
+    writer.SetFileParams(FilePath := F_TestFilePath('txt_long_line.txt'));
+    writer.WriteLine(Entry := longLine);
+    writer.WriteToFile();
+    step := 10;
+
+  10:
+
+    IF writer.Busy THEN
+      RETURN;
+    END_IF
+
+    testFile.Read(FilePath := F_TestFilePath('txt_long_line.txt'));
+    step := 20;
+
+  20:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertEquals_DINT(Expected := 302, Actual := testFile.Length, Message := '300 characters and CR LF');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_MissingDirectoryGivesAnError" Id="{df81349c-07da-4140-8820-e988775d7933}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_MissingDirectoryGivesAnError
+VAR_INST
+  writer : T_TxtFileWriter;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+writer();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    writer.SetFileParams(FilePath := F_TestFilePath('missing\file.txt'));
+    writer.WriteLine(Entry := 'line');
+    writer.WriteToFile();
+    step := 10;
+
+  10:
+
+    IF writer.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertTrue(Condition := writer.Error, Message := 'a folder that does not exist gives an error');
+    AssertTrue(Condition := writer.ErrorId <> 0, Message := 'with an error id');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,237 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.19">
+  <POU Name="T_StructJsonFile_Tests" Id="{46879fda-80f5-45fb-b7c5-d2c228c8eba2}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK T_StructJsonFile_Tests EXTENDS TcUnit.FB_TestSuite
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Test_WrittenStructReadsBackTheSame();
+Test_ReadingAMissingFileGivesAnError();
+Test_ReaderReadsAgainAfterAnErrorAndReset();
+]]></ST>
+    </Implementation>
+    <Method Name="Test_ReaderReadsAgainAfterAnErrorAndReset" Id="{f8d77d5b-efc0-42f9-8347-cdbf9071eb24}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_ReaderReadsAgainAfterAnErrorAndReset
+VAR_INST
+  reader : T_StructFromJsonFileReader;
+  testFile : T_TestFile;
+  recipe : ST_TestRecipe;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+reader();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    testFile.Delete(FilePath := F_TestFilePath('json_after_reset.json'));
+    step := 10;
+
+  10:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    reader.SetFileParams(
+      FilePath := F_TestFilePath('json_after_reset.json'),
+      StructureName := 'ST_TestRecipe',
+      PointerToStructure := ADR(recipe),
+      SizeOfStructure := SIZEOF(recipe));
+    reader.ReadFromFile();
+    step := 20;
+
+  20:
+
+    IF reader.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertTrue(Condition := reader.Error, Message := 'first read of a missing file fails');
+    testFile.Write(FilePath := F_TestFilePath('json_after_reset.json'), Content := '{"Name":"from file","Speed":2.5,"Count":7,"Enabled":true}');
+    step := 30;
+
+  30:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    reader.Reset();
+    step := 40;
+
+  40:
+
+    reader.ReadFromFile();
+    step := 50;
+
+  50:
+
+    IF reader.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := reader.Error, Message := 'the second read succeeds once the file exists');
+    AssertEquals_DINT(Expected := 7, Actual := recipe.Count, Message := 'Count read from the file');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_ReadingAMissingFileGivesAnError" Id="{7dd1cb2f-a78d-4e74-92db-94ea91458fa5}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_ReadingAMissingFileGivesAnError
+VAR_INST
+  reader : T_StructFromJsonFileReader;
+  testFile : T_TestFile;
+  recipe : ST_TestRecipe;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+reader();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    testFile.Delete(FilePath := F_TestFilePath('json_missing.json'));
+    step := 10;
+
+  10:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    reader.SetFileParams(
+      FilePath := F_TestFilePath('json_missing.json'),
+      StructureName := 'ST_TestRecipe',
+      PointerToStructure := ADR(recipe),
+      SizeOfStructure := SIZEOF(recipe));
+    reader.ReadFromFile();
+    step := 20;
+
+  20:
+
+    IF reader.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertTrue(Condition := reader.Error, Message := 'a missing file gives an error');
+    AssertFalse(Condition := reader.FileExists, Message := 'FileExists is FALSE');
+    AssertFalse(Condition := reader.Done, Message := 'not done');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_WrittenStructReadsBackTheSame" Id="{2d61902d-d89b-4faa-8c0a-13a9675fdc87}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_WrittenStructReadsBackTheSame
+VAR_INST
+  writer : T_StructToJsonFileWriter;
+  reader : T_StructFromJsonFileReader;
+  original : ST_TestRecipe;
+  copy : ST_TestRecipe;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+writer();
+reader();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    original.Name := 'recipe one';
+    original.Speed := 12.5;
+    original.Count := 42;
+    original.Enabled := TRUE;
+    writer.SetFileParams(
+      FilePath := F_TestFilePath('json_round_trip.json'),
+      StructureName := 'ST_TestRecipe',
+      PointerToStructure := ADR(original),
+      SizeOfStructure := SIZEOF(original));
+    writer.WriteToFile();
+    step := 10;
+
+  10:
+
+    IF writer.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := writer.Error, Message := 'struct written without an error');
+    AssertTrue(Condition := writer.Done, Message := 'writer done');
+    reader.SetFileParams(
+      FilePath := F_TestFilePath('json_round_trip.json'),
+      StructureName := 'ST_TestRecipe',
+      PointerToStructure := ADR(copy),
+      SizeOfStructure := SIZEOF(copy));
+    reader.ReadFromFile();
+    step := 20;
+
+  20:
+
+    IF reader.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := reader.Error, Message := 'struct read without an error');
+    AssertTrue(Condition := reader.Done, Message := 'reader done');
+    AssertEquals_STRING(Expected := original.Name, Actual := copy.Name, Message := 'Name');
+    AssertEquals_LREAL(Expected := original.Speed, Actual := copy.Speed, Delta := 1.0E-9, Message := 'Speed');
+    AssertEquals_DINT(Expected := original.Count, Actual := copy.Count, Message := 'Count');
+    AssertEquals_BOOL(Expected := original.Enabled, Actual := copy.Enabled, Message := 'Enabled');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

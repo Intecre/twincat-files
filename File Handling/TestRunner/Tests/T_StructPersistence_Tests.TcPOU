@@ -1,0 +1,502 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.25">
+  <POU Name="T_StructPersistence_Tests" Id="{65acdb8e-a14f-43a6-beca-7ff17c1e8cfc}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK T_StructPersistence_Tests EXTENDS TcUnit.FB_TestSuite
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Test_CreatesTheFileWhenItDoesNotExist();
+Test_ReadsAnExistingFileIntoTheStruct();
+Test_ReadsAgainAfterAFailedRead();
+Test_WriteToFileSavesTheCurrentStruct();
+Test_AutoWritesAfterTheStructChanges();
+Test_CreatesAFileWithAPathLongerThan80Characters();
+]]></ST>
+    </Implementation>
+    <Method Name="Test_CreatesTheFileWhenItDoesNotExist" Id="{8cd91d07-7206-4054-9152-5911af447082}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_CreatesTheFileWhenItDoesNotExist
+VAR_INST
+  persistence : T_StructPersistence;
+  options : ST_PersistenceOptions;
+  recipe : ST_TestRecipe;
+  testFile : T_TestFile;
+  timeout : TON;
+  settle : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+testFile();
+
+IF step >= 20 THEN
+  persistence(Options := options);
+END_IF
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    testFile.Delete(FilePath := F_TestFilePath('persist_create.json'));
+    step := 10;
+
+  10:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    recipe.Count := 5;
+    options.AddressOfStruct := ADR(recipe);
+    options.SizeOfStruct := SIZEOF(recipe);
+    options.NameOfStructureType := 'ST_TestRecipe';
+    options.FilePath := F_TestFilePath('persist_create.json');
+    options.CreateFileIfDoesntExist := TRUE;
+    options.AutoWriteOnDifference := FALSE;
+    options.AutoWriteCheckTime := T#200MS;
+    options.AutoWriteDebounceTime := T#200MS;
+    step := 20;
+
+  20:
+
+    IF NOT persistence.FileCreated THEN
+      RETURN;
+    END_IF
+
+    AssertTrue(Condition := persistence.WriteSuccess, Message := 'write reported');
+    testFile.Read(FilePath := F_TestFilePath('persist_create.json'));
+    step := 30;
+
+  30:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertTrue(Condition := testFile.Contains('"Count":5'), Message := 'the new file holds the struct');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_ReadsAnExistingFileIntoTheStruct" Id="{93d77514-3af3-48fe-85b9-9c82c4157dce}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_ReadsAnExistingFileIntoTheStruct
+VAR_INST
+  persistence : T_StructPersistence;
+  options : ST_PersistenceOptions;
+  recipe : ST_TestRecipe;
+  testFile : T_TestFile;
+  timeout : TON;
+  settle : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+testFile();
+
+IF step >= 20 THEN
+  persistence(Options := options);
+END_IF
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    testFile.Write(FilePath := F_TestFilePath('persist_read.json'), Content := '{"Name":"from file","Speed":2.5,"Count":7,"Enabled":true}');
+    step := 10;
+
+  10:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    options.AddressOfStruct := ADR(recipe);
+    options.SizeOfStruct := SIZEOF(recipe);
+    options.NameOfStructureType := 'ST_TestRecipe';
+    options.FilePath := F_TestFilePath('persist_read.json');
+    options.CreateFileIfDoesntExist := TRUE;
+    options.AutoWriteOnDifference := FALSE;
+    options.AutoWriteCheckTime := T#200MS;
+    options.AutoWriteDebounceTime := T#200MS;
+    step := 20;
+
+  20:
+
+    IF NOT persistence.ReadSuccess THEN
+      RETURN;
+    END_IF
+
+    AssertEquals_STRING(Expected := 'from file', Actual := recipe.Name, Message := 'Name read from the file');
+    AssertEquals_DINT(Expected := 7, Actual := recipe.Count, Message := 'Count read from the file');
+    AssertFalse(Condition := persistence.FileCreated, Message := 'an existing file is not created again');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_ReadsAgainAfterAFailedRead" Id="{ddbd03d0-30a9-478a-a5b3-53c1e1beef11}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_ReadsAgainAfterAFailedRead
+VAR_INST
+  persistence : T_StructPersistence;
+  options : ST_PersistenceOptions;
+  recipe : ST_TestRecipe;
+  testFile : T_TestFile;
+  timeout : TON;
+  settle : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+testFile();
+
+IF step >= 20 THEN
+  persistence(Options := options);
+END_IF
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    testFile.Delete(FilePath := F_TestFilePath('persist_read_again.json'));
+    step := 10;
+
+  10:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    options.AddressOfStruct := ADR(recipe);
+    options.SizeOfStruct := SIZEOF(recipe);
+    options.NameOfStructureType := 'ST_TestRecipe';
+    options.FilePath := F_TestFilePath('persist_read_again.json');
+    options.CreateFileIfDoesntExist := FALSE;
+    options.AutoWriteOnDifference := FALSE;
+    options.AutoWriteCheckTime := T#200MS;
+    options.AutoWriteDebounceTime := T#200MS;
+    step := 20;
+
+  20:
+
+    settle(IN := TRUE, PT := T#500MS);
+
+    IF NOT settle.Q THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := persistence.ReadSuccess, Message := 'the first read fails while the file is missing');
+    testFile.Write(FilePath := F_TestFilePath('persist_read_again.json'), Content := '{"Name":"from file","Speed":2.5,"Count":7,"Enabled":true}');
+    step := 30;
+
+  30:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertTrue(Condition := persistence.ReadFromFile(), Message := 'read requested');
+    step := 40;
+
+  40:
+
+    IF NOT persistence.ReadSuccess THEN
+      RETURN;
+    END_IF
+
+    AssertEquals_DINT(Expected := 7, Actual := recipe.Count, Message := 'Count read from the file');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_WriteToFileSavesTheCurrentStruct" Id="{c356bae8-1b69-4caa-bdff-ec8fc726ba66}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_WriteToFileSavesTheCurrentStruct
+VAR_INST
+  persistence : T_StructPersistence;
+  options : ST_PersistenceOptions;
+  recipe : ST_TestRecipe;
+  testFile : T_TestFile;
+  timeout : TON;
+  settle : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+testFile();
+
+IF step >= 20 THEN
+  persistence(Options := options);
+END_IF
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    testFile.Write(FilePath := F_TestFilePath('persist_write.json'), Content := '{"Name":"from file","Speed":2.5,"Count":7,"Enabled":true}');
+    step := 10;
+
+  10:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    options.AddressOfStruct := ADR(recipe);
+    options.SizeOfStruct := SIZEOF(recipe);
+    options.NameOfStructureType := 'ST_TestRecipe';
+    options.FilePath := F_TestFilePath('persist_write.json');
+    options.CreateFileIfDoesntExist := TRUE;
+    options.AutoWriteOnDifference := FALSE;
+    options.AutoWriteCheckTime := T#200MS;
+    options.AutoWriteDebounceTime := T#200MS;
+    step := 20;
+
+  20:
+
+    IF NOT persistence.ReadSuccess THEN
+      RETURN;
+    END_IF
+
+    recipe.Count := 21;
+    AssertTrue(Condition := persistence.WriteToFile(), Message := 'write requested');
+    step := 30;
+
+  30:
+
+    IF NOT persistence.WriteSuccess THEN
+      RETURN;
+    END_IF
+
+    testFile.Read(FilePath := F_TestFilePath('persist_write.json'));
+    step := 40;
+
+  40:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertTrue(Condition := testFile.Contains('"Count":21'), Message := 'the file holds the changed struct');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_AutoWritesAfterTheStructChanges" Id="{02691671-7154-4253-b192-888f2c869c9f}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_AutoWritesAfterTheStructChanges
+VAR_INST
+  persistence : T_StructPersistence;
+  options : ST_PersistenceOptions;
+  recipe : ST_TestRecipe;
+  testFile : T_TestFile;
+  timeout : TON;
+  settle : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+testFile();
+
+IF step >= 20 THEN
+  persistence(Options := options);
+END_IF
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    testFile.Write(FilePath := F_TestFilePath('persist_auto_write.json'), Content := '{"Name":"from file","Speed":2.5,"Count":7,"Enabled":true}');
+    step := 10;
+
+  10:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    options.AddressOfStruct := ADR(recipe);
+    options.SizeOfStruct := SIZEOF(recipe);
+    options.NameOfStructureType := 'ST_TestRecipe';
+    options.FilePath := F_TestFilePath('persist_auto_write.json');
+    options.CreateFileIfDoesntExist := TRUE;
+    options.AutoWriteOnDifference := TRUE;
+    options.AutoWriteCheckTime := T#200MS;
+    options.AutoWriteDebounceTime := T#200MS;
+    step := 20;
+
+  20:
+
+    IF NOT persistence.ReadSuccess THEN
+      RETURN;
+    END_IF
+
+    recipe.Count := 33;
+    step := 30;
+
+  30:
+
+    settle(IN := TRUE, PT := T#1500MS);
+
+    IF NOT settle.Q THEN
+      RETURN;
+    END_IF
+
+    testFile.Read(FilePath := F_TestFilePath('persist_auto_write.json'));
+    step := 40;
+
+  40:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertTrue(Condition := testFile.Contains('"Count":33'), Message := 'the change was written without a WriteToFile call');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_CreatesAFileWithAPathLongerThan80Characters" Id="{64d44e6c-ef7e-4fe1-a0cb-a918c5cfb6c5}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_CreatesAFileWithAPathLongerThan80Characters
+VAR_INST
+  persistence : T_StructPersistence;
+  options : ST_PersistenceOptions;
+  recipe : ST_TestRecipe;
+  testFile : T_TestFile;
+  timeout : TON;
+  settle : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+testFile();
+
+IF step >= 20 THEN
+  persistence(Options := options);
+END_IF
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    testFile.Delete(FilePath := F_TestFilePath('a_file_name_that_makes_the_whole_path_longer_than_eighty_characters.json'));
+    step := 10;
+
+  10:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    recipe.Count := 8;
+    options.AddressOfStruct := ADR(recipe);
+    options.SizeOfStruct := SIZEOF(recipe);
+    options.NameOfStructureType := 'ST_TestRecipe';
+    options.FilePath := F_TestFilePath('a_file_name_that_makes_the_whole_path_longer_than_eighty_characters.json');
+    options.CreateFileIfDoesntExist := TRUE;
+    options.AutoWriteOnDifference := FALSE;
+    options.AutoWriteCheckTime := T#200MS;
+    options.AutoWriteDebounceTime := T#200MS;
+    step := 20;
+
+  20:
+
+    IF NOT persistence.WriteSuccess THEN
+      RETURN;
+    END_IF
+
+    testFile.Read(FilePath := F_TestFilePath('a_file_name_that_makes_the_whole_path_longer_than_eighty_characters.json'));
+    step := 30;
+
+  30:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := testFile.Error, Message := 'the file is at the full path');
+    AssertTrue(Condition := testFile.Contains('"Count":8'), Message := 'and holds the struct');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

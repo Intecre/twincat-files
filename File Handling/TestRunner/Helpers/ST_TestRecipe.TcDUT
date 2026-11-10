@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.25">
+  <DUT Name="ST_TestRecipe" Id="{c76a3c4c-ee6f-4cbd-9bd4-b8a84a0d6759}">
+    <Declaration><![CDATA[TYPE ST_TestRecipe :
+STRUCT
+  Name : STRING(40);
+  Speed : LREAL;
+  Count : DINT;
+  Enabled : BOOL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

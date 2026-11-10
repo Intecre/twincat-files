@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.25">
+  <GVL Name="TestFiles" Id="{aafe6cc2-d75f-402e-9e36-08d5a8212fc8}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL CONSTANT
+  DIRECTORY : T_MaxString := 'C:\TcUnit_IntecreFile';
+  TIMEOUT : TIME := T#5S;
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>

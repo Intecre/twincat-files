@@ -1,0 +1,370 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.25">
+  <POU Name="T_CsvFileWriter_Tests" Id="{c0427a26-e5db-4f74-9bdc-e6060488ce8b}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK T_CsvFileWriter_Tests EXTENDS TcUnit.FB_TestSuite
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Test_SeparatesFieldsWithCommas();
+Test_SeparatesFieldsWithSemicolons();
+Test_UnknownSeparatorFallsBackToSemicolon();
+Test_AppendModeAddsRows();
+Test_QuotesAFieldContainingTheSeparator();
+Test_CountsRowsAndColumns();
+Test_ClearBufferReportsTheBufferIsClear();
+]]></ST>
+    </Implementation>
+    <Method Name="Test_SeparatesFieldsWithCommas" Id="{155abe5e-6771-4b33-a491-2252c57ed91b}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_SeparatesFieldsWithCommas
+VAR_INST
+  writer : T_CsvFileWriter;
+  testFile : T_TestFile;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+writer();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    writer.SetFileParams(FilePath := F_TestFilePath('csv_commas.csv'), Separator := ASCI_COMMA);
+    writer.AddStringField(sFieldString := 'a');
+    writer.AddStringField(sFieldString := 'b');
+    writer.NewLine();
+    writer.AddStringField(sFieldString := 'c');
+    writer.AddStringField(sFieldString := 'd');
+    writer.WriteToFile();
+    step := 10;
+
+  10:
+
+    IF writer.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := writer.Error, Message := 'file written without an error');
+    testFile.Read(FilePath := F_TestFilePath('csv_commas.csv'));
+    step := 20;
+
+  20:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertEquals_STRING(Expected := 'a,b$R$Nc,d$R$N', Actual := testFile.Text, Message := 'two rows of two comma separated fields');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_SeparatesFieldsWithSemicolons" Id="{8d19dac8-8109-45f7-b680-af99d283d90a}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_SeparatesFieldsWithSemicolons
+VAR_INST
+  writer : T_CsvFileWriter;
+  testFile : T_TestFile;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+writer();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    writer.SetFileParams(FilePath := F_TestFilePath('csv_semicolons.csv'), Separator := ASCI_SEMI_COLON);
+    writer.AddStringField(sFieldString := 'a');
+    writer.AddStringField(sFieldString := 'b');
+    writer.WriteToFile();
+    step := 10;
+
+  10:
+
+    IF writer.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := writer.Error, Message := 'file written without an error');
+    testFile.Read(FilePath := F_TestFilePath('csv_semicolons.csv'));
+    step := 20;
+
+  20:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertEquals_STRING(Expected := 'a;b$R$N', Actual := testFile.Text, Message := 'semicolon separated fields');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_UnknownSeparatorFallsBackToSemicolon" Id="{33917f8a-a44a-41bd-bafa-ec4246ccecd1}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_UnknownSeparatorFallsBackToSemicolon
+VAR_INST
+  writer : T_CsvFileWriter;
+  testFile : T_TestFile;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+writer();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    writer.SetFileParams(FilePath := F_TestFilePath('csv_unknown_separator.csv'), Separator := 16#09);
+    writer.AddStringField(sFieldString := 'a');
+    writer.AddStringField(sFieldString := 'b');
+    writer.WriteToFile();
+    step := 10;
+
+  10:
+
+    IF writer.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := writer.Error, Message := 'file written without an error');
+    testFile.Read(FilePath := F_TestFilePath('csv_unknown_separator.csv'));
+    step := 20;
+
+  20:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertEquals_STRING(Expected := 'a;b$R$N', Actual := testFile.Text, Message := 'a tab is not supported, so semicolon is used');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_AppendModeAddsRows" Id="{0dbf66d2-ca23-4fde-9a0b-173b00716472}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_AppendModeAddsRows
+VAR_INST
+  writer : T_CsvFileWriter;
+  testFile : T_TestFile;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+writer();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    testFile.Write(FilePath := F_TestFilePath('csv_append.csv'), Content := 'x,y$R$N');
+    step := 5;
+
+  5:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := testFile.Error, Message := 'existing file written');
+    step := 6;
+
+  6:
+
+    writer.SetFileParams(FilePath := F_TestFilePath('csv_append.csv'), Separator := ASCI_COMMA);
+    writer.SetFileOpenMode(Append := TRUE);
+    writer.AddStringField(sFieldString := 'a');
+    writer.AddStringField(sFieldString := 'b');
+    writer.WriteToFile();
+    step := 10;
+
+  10:
+
+    IF writer.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := writer.Error, Message := 'file written without an error');
+    testFile.Read(FilePath := F_TestFilePath('csv_append.csv'));
+    step := 20;
+
+  20:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertEquals_STRING(Expected := 'x,y$R$Na,b$R$N', Actual := testFile.Text, Message := 'row appended after the existing row');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_QuotesAFieldContainingTheSeparator" Id="{2aa9ef54-bb80-4c85-b141-97db7992771f}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_QuotesAFieldContainingTheSeparator
+VAR_INST
+  writer : T_CsvFileWriter;
+  testFile : T_TestFile;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+writer();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    writer.SetFileParams(FilePath := F_TestFilePath('csv_quoted.csv'), Separator := ASCI_COMMA);
+    writer.AddStringField(sFieldString := 'a,b');
+    writer.AddStringField(sFieldString := 'c');
+    writer.WriteToFile();
+    step := 10;
+
+  10:
+
+    IF writer.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := writer.Error, Message := 'file written without an error');
+    testFile.Read(FilePath := F_TestFilePath('csv_quoted.csv'));
+    step := 20;
+
+  20:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertEquals_STRING(Expected := '"a,b",c$R$N', Actual := testFile.Text, Message := 'a field holding the separator is quoted so the row keeps two fields');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_CountsRowsAndColumns" Id="{cb08fc1b-6b27-42b0-b5e3-cf3b53ed1aa8}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_CountsRowsAndColumns
+VAR_INST
+  writer : T_CsvFileWriter;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+writer.SetFileParams(FilePath := F_TestFilePath('csv_counts.csv'), Separator := ASCI_COMMA);
+writer.AddStringField(sFieldString := 'a');
+writer.AddStringField(sFieldString := 'b');
+AssertEquals_UINT(Expected := 2, Actual := writer.Column, Message := 'two fields on the row');
+AssertEquals_UINT(Expected := 0, Actual := writer.Row, Message := 'still on the first row');
+
+writer.NewLine();
+AssertEquals_UINT(Expected := 0, Actual := writer.Column, Message := 'column back to zero on a new line');
+AssertEquals_UINT(Expected := 1, Actual := writer.Row, Message := 'second row');
+
+TEST_FINISHED_NAMED(__POUNAME());
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_ClearBufferReportsTheBufferIsClear" Id="{9bf7d7a0-9452-416e-bc56-01a538ec6a66}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_ClearBufferReportsTheBufferIsClear
+VAR_INST
+  writer : T_CsvFileWriter;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+writer.SetFileParams(FilePath := F_TestFilePath('csv_clear.csv'), Separator := ASCI_COMMA);
+writer.AddStringField(sFieldString := 'a');
+AssertTrue(Condition := writer.ClearBuffer(), Message := 'ClearBuffer returns TRUE');
+AssertTrue(Condition := writer.BufferClear, Message := 'BufferClear after ClearBuffer');
+
+TEST_FINISHED_NAMED(__POUNAME());
+]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

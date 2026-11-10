@@ -1,0 +1,254 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.19">
+  <POU Name="T_TestFile" Id="{bcdf5773-772a-4d81-9c90-0ce12cbeea0a}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK T_TestFile
+VAR
+  fileOpen : FB_FileOpen;
+  fileWrite : FB_FileWrite;
+  fileRead : FB_FileRead;
+  fileClose : FB_FileClose;
+  fileDelete : FB_FileDelete;
+  path : T_MaxString;
+  textToWrite : STRING(2000);
+  textRead : STRING(2000);
+  startOfTextRead : T_MaxString;
+  request : (NoRequest, WriteRequest, ReadRequest, DeleteRequest);
+  state : (Idle, Opening, Writing, Reading, Closing, Deleting);
+  failed : BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE state OF
+
+  Idle:
+
+    IF request = DeleteRequest THEN
+      state := Deleting;
+
+    ELSIF request <> NoRequest THEN
+      state := Opening;
+
+    END_IF
+
+  Opening:
+
+    IF NOT fileOpen.bBusy AND fileOpen.bError THEN
+      Finish(WithError := TRUE);
+
+    ELSIF NOT fileOpen.bBusy AND (request = WriteRequest) THEN
+      state := Writing;
+
+    ELSIF NOT fileOpen.bBusy THEN
+      state := Reading;
+
+    END_IF
+
+  Writing:
+
+    IF NOT fileWrite.bBusy THEN
+      failed := fileWrite.bError;
+      state := Closing;
+    END_IF
+
+  Reading:
+
+    IF NOT fileRead.bBusy THEN
+      failed := fileRead.bError;
+      MEMCPY(destAddr := ADR(startOfTextRead), srcAddr := ADR(textRead), n := SIZEOF(startOfTextRead) - 1);
+      state := Closing;
+    END_IF
+
+  Closing:
+
+    IF NOT fileClose.bBusy THEN
+      Finish(WithError := failed OR fileClose.bError);
+    END_IF
+
+  Deleting:
+
+    IF NOT fileDelete.bBusy THEN
+      Finish(WithError := fileDelete.bError);
+    END_IF
+
+END_CASE
+
+fileOpen(
+  sNetId := '',
+  sPathName := path,
+  nMode := SEL(request = WriteRequest, FOPEN_MODEREAD OR FOPEN_MODEBINARY, FOPEN_MODEWRITE OR FOPEN_MODEBINARY),
+  bExecute := state = Opening);
+
+fileWrite(
+  sNetId := '',
+  hFile := fileOpen.hFile,
+  pWriteBuff := ADR(textToWrite),
+  cbWriteLen := TO_UDINT(LEN2(ADR(textToWrite))),
+  bExecute := state = Writing);
+
+fileRead(
+  sNetId := '',
+  hFile := fileOpen.hFile,
+  pReadBuff := ADR(textRead),
+  cbReadLen := SIZEOF(textRead) - 1,
+  bExecute := state = Reading);
+
+fileClose(
+  sNetId := '',
+  hFile := fileOpen.hFile,
+  bExecute := state = Closing);
+
+fileDelete(
+  sNetId := '',
+  sPathName := path,
+  bExecute := state = Deleting);
+]]></ST>
+    </Implementation>
+    <Property Name="Busy" Id="{cd801f85-693f-4eb0-a143-6feffa7147af}">
+      <Declaration><![CDATA[PROPERTY Busy : BOOL
+]]></Declaration>
+      <Get Name="Get" Id="{4fe9f53a-b1f7-4b69-a99e-088f180c2206}">
+        <Declaration><![CDATA[
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Busy := request <> NoRequest;
+]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="Contains" Id="{ef61da80-3d13-4b48-ac99-efbcff8e6b2c}">
+      <Declaration><![CDATA[METHOD Contains : BOOL
+VAR_INPUT
+  Part : T_MaxString;
+END_VAR
+VAR
+  textLength : DINT;
+  partLength : DINT;
+  position : DINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[textLength := TO_DINT(LEN2(ADR(textRead)));
+partLength := TO_DINT(LEN2(ADR(Part)));
+
+IF partLength = 0 THEN
+  RETURN;
+END_IF
+
+FOR position := 0 TO textLength - partLength DO
+  IF MEMCMP(pBuf1 := ADR(textRead) + TO_UDINT(position), pBuf2 := ADR(Part), n := TO_UDINT(partLength)) = 0 THEN
+    Contains := TRUE;
+    RETURN;
+  END_IF
+END_FOR
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Delete" Id="{ce467a2f-af3d-4e99-8442-655e60a6c6b7}">
+      <Declaration><![CDATA[METHOD Delete : BOOL
+VAR_INPUT
+  FilePath : T_MaxString;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF Busy THEN
+  RETURN;
+END_IF
+
+path := FilePath;
+failed := FALSE;
+request := DeleteRequest;
+Delete := TRUE;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Error" Id="{f91e297f-24e6-4217-980d-0d0226c24cd8}">
+      <Declaration><![CDATA[PROPERTY Error : BOOL
+]]></Declaration>
+      <Get Name="Get" Id="{b83b4b5b-29d3-4d7d-9afb-617b61cc69d8}">
+        <Declaration><![CDATA[
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Error := failed AND NOT Busy;
+]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="Finish" Id="{272c63ca-e516-46b6-ae60-2db80929b624}">
+      <Declaration><![CDATA[METHOD PRIVATE Finish
+VAR_INPUT
+  WithError : BOOL;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[failed := WithError;
+request := NoRequest;
+state := Idle;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Length" Id="{37f619eb-bc73-457a-9a73-6e58a43edabc}">
+      <Declaration><![CDATA[PROPERTY Length : DINT
+]]></Declaration>
+      <Get Name="Get" Id="{2811ec24-7dd8-441a-918b-2971a9b510f6}">
+        <Declaration><![CDATA[
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Length := TO_DINT(LEN2(ADR(textRead)));
+]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="Read" Id="{32d26c2f-a124-4621-9ceb-b1dbac78edfa}">
+      <Declaration><![CDATA[METHOD Read : BOOL
+VAR_INPUT
+  FilePath : T_MaxString;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF Busy THEN
+  RETURN;
+END_IF
+
+path := FilePath;
+MEMSET(destAddr := ADR(textRead), fillByte := 0, n := SIZEOF(textRead));
+MEMSET(destAddr := ADR(startOfTextRead), fillByte := 0, n := SIZEOF(startOfTextRead));
+failed := FALSE;
+request := ReadRequest;
+Read := TRUE;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Text" Id="{1e58ec39-e7d7-483e-93b6-82d53465b92e}">
+      <Declaration><![CDATA[PROPERTY Text : T_MaxString
+]]></Declaration>
+      <Get Name="Get" Id="{0e188f6a-5057-49d8-9759-ef9da812c08b}">
+        <Declaration><![CDATA[
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Text := startOfTextRead;
+]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="Write" Id="{6daaafb8-3556-4e16-a375-3515ec7beab3}">
+      <Declaration><![CDATA[METHOD Write : BOOL
+VAR_INPUT
+  FilePath : T_MaxString;
+  Content : STRING(2000);
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF Busy THEN
+  RETURN;
+END_IF
+
+path := FilePath;
+textToWrite := Content;
+failed := FALSE;
+request := WriteRequest;
+Write := TRUE;
+]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.25">
+  <POU Name="MAIN" Id="{014d37a8-d590-42f4-8d60-f1d7a06db9c5}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN
+VAR
+  testDirectory           : T_TestDirectory;
+  suiteTxtFileWriter      : T_TxtFileWriter_Tests;
+  suiteCsvFileWriter      : T_CsvFileWriter_Tests;
+  suiteCsvFileReader      : T_CsvFileReader_Tests;
+  suiteStructJsonFile     : T_StructJsonFile_Tests;
+  suiteStructPersistence  : T_StructPersistence_Tests;
+  suiteCheckFileExists    : T_CheckFileExists_Tests;
+  suiteProjectInformation : ProjectInformation_Tests;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[testDirectory();
+
+IF NOT testDirectory.Ready THEN
+  RETURN;
+END_IF
+
+TcUnit.RUN_IN_SEQUENCE();
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

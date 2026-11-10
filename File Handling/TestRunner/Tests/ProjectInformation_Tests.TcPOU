@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.19">
+  <POU Name="ProjectInformation_Tests" Id="{381041a5-d514-4320-a47a-32ffbd50e26e}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK ProjectInformation_Tests EXTENDS TcUnit.FB_TestSuite
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Test_TitleAndCompany();
+Test_VersionIsOnePointThree();
+]]></ST>
+    </Implementation>
+    <Method Name="Test_TitleAndCompany" Id="{be2a7440-8e41-4f1a-82d3-867bafb63399}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_TitleAndCompany
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[TcUnit.TEST(__POUNAME());
+
+AssertEquals_WSTRING(Expected := "Intecre.File", Actual := Intecre_File.F_GetTitle(), Message := 'library title');
+AssertEquals_WSTRING(Expected := "Intecre Ltd", Actual := Intecre_File.F_GetCompany(), Message := 'library company');
+
+TEST_FINISHED_NAMED(__POUNAME());
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_VersionIsOnePointThree" Id="{8b2c3e5b-555d-49f2-8762-cabcccde16ef}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_VersionIsOnePointThree
+VAR
+  version : ST_LibVersion;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[TcUnit.TEST(__POUNAME());
+
+version := Intecre_File.F_GetVersion();
+AssertEquals_STRING(Expected := '1.3.0.0', Actual := version.sVersion, Message := 'library version string');
+AssertEquals_UINT(Expected := 1, Actual := version.iMajor, Message := 'major version');
+AssertEquals_UINT(Expected := 3, Actual := version.iMinor, Message := 'minor version');
+
+TEST_FINISHED_NAMED(__POUNAME());
+]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

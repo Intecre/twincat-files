@@ -1,0 +1,175 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.25">
+  <POU Name="T_CheckFileExists_Tests" Id="{103915f2-dc92-4f15-9b62-f7a3d0bcfba5}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK T_CheckFileExists_Tests EXTENDS TcUnit.FB_TestSuite
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Test_FindsAnExistingFile();
+Test_ReportsAMissingFile();
+Test_FindsAFileWithAPathLongerThan80Characters();
+]]></ST>
+    </Implementation>
+    <Method Name="Test_FindsAnExistingFile" Id="{7edbd7f7-5695-4701-bbb0-6e8ef433f610}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_FindsAnExistingFile
+VAR_INST
+  checker : T_CheckFileExists;
+  testFile : T_TestFile;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+checker();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    testFile.Write(FilePath := F_TestFilePath('exists.txt'), Content := 'x');
+    step := 10;
+
+  10:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    checker.Check(Path := F_TestFilePath('exists.txt'));
+    step := 20;
+
+  20:
+
+    IF checker.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertEquals_BOOL(Expected := TRUE, Actual := checker.FileExists, Message := 'an existing file is found');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_ReportsAMissingFile" Id="{ca3a37ef-513a-403e-93df-30f40fed4358}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_ReportsAMissingFile
+VAR_INST
+  checker : T_CheckFileExists;
+  testFile : T_TestFile;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+checker();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    testFile.Delete(FilePath := F_TestFilePath('does_not_exist.txt'));
+    step := 10;
+
+  10:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    checker.Check(Path := F_TestFilePath('does_not_exist.txt'));
+    step := 20;
+
+  20:
+
+    IF checker.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertEquals_BOOL(Expected := FALSE, Actual := checker.FileExists, Message := 'a missing file is not found');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_FindsAFileWithAPathLongerThan80Characters" Id="{c6d06870-db67-4788-b1ce-b429cfa302bf}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_FindsAFileWithAPathLongerThan80Characters
+VAR_INST
+  checker : T_CheckFileExists;
+  testFile : T_TestFile;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+checker();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    testFile.Write(FilePath := F_TestFilePath('a_file_name_that_makes_the_whole_path_longer_than_eighty_characters.json.txt'), Content := 'x');
+    step := 10;
+
+  10:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    checker.Check(Path := F_TestFilePath('a_file_name_that_makes_the_whole_path_longer_than_eighty_characters.json.txt'));
+    step := 20;
+
+  20:
+
+    IF checker.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertEquals_BOOL(Expected := TRUE, Actual := checker.FileExists, Message := 'a path longer than 80 characters is checked in full');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

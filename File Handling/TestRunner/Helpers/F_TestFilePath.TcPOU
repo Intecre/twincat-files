@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.25">
+  <POU Name="F_TestFilePath" Id="{8f37d3cc-3956-4e1d-9027-8664628cd98c}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION F_TestFilePath : T_MaxString
+VAR_INPUT
+  FileName : T_MaxString;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[F_TestFilePath := CONCAT(CONCAT(TestFiles.DIRECTORY, '\'), FileName);
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

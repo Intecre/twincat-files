@@ -1,43 +1,18 @@
-
-#Ignore thumbnails created by Windows
-Thumbs.db
-#Ignore files built by Visual Studio
-*.obj
-*.exe
-*.pdb
-*.user
-*.aps
-*.pch
-*.vspscc
-*_i.c
-*_p.c
-*.ncb
-*.suo
-*.tlb
-*.tlh
-*.bak
-*.cache
-*.ilk
-*.log
-[Bb]in
-[Dd]ebug*/
-*.lib
-*.sbr
-obj/
-[Rr]elease*/
-_ReSharper*/
-[Tt]est[Rr]esult*
-.vs/
-#Nuget packages folder
-packages/
-#Twincat ignores. Added by MLaz
-*.sln
-*.suo
-*.compileinfo
-
-*_Boot/
+﻿# TwinCAT build artefacts
+*compileinfo
+*_Boot*
+*TrialLicense.tclrs
 *~u
-File Handling/SCI_File_Handling/_Libraries/beckhoff automation gmbh/
+*.suo
+*.bak
+*LineIDs.dbg
 *.tmcRefac
 *.libcat.xml
 /Intecre_File.compiled-library
+.vs/
+
+# tclib publish: earlier library files moved aside on each publish
+/archive/
+
+# XAE solution upgrade report
+UpgradeLog*.htm

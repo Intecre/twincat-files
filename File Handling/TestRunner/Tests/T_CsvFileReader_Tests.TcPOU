@@ -1,0 +1,277 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.19">
+  <POU Name="T_CsvFileReader_Tests" Id="{039a27bb-0a6b-422e-9aa3-2589a627f844}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK T_CsvFileReader_Tests EXTENDS TcUnit.FB_TestSuite
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Test_ReadsEachFieldWithItsRowAndColumn();
+Test_ReadsSemicolonSeparatedFields();
+Test_KeepsFieldsLongerThan80Characters();
+Test_MissingFileGivesAnError();
+]]></ST>
+    </Implementation>
+    <Method Name="Test_KeepsFieldsLongerThan80Characters" Id="{ce151c81-7902-4a8f-bdc6-40271b6157e6}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_KeepsFieldsLongerThan80Characters
+VAR_INST
+  reader : T_CsvFileReader;
+  testFile : T_TestFile;
+  timeout : TON;
+  step : INT;
+  content : STRING(2000);
+  field : T_MaxString;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+reader();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    MEMSET(destAddr := ADR(content), fillByte := 16#41, n := 100);
+    content[100] := 16#0D;
+    content[101] := 16#0A;
+    testFile.Write(FilePath := F_TestFilePath('csv_long_field.csv'), Content := content);
+    step := 10;
+
+  10:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := testFile.Error, Message := 'CSV file written for the test');
+    reader.SetFileParams(FilePath := F_TestFilePath('csv_long_field.csv'), Separator := ASCI_COMMA);
+    reader.GetFile();
+    step := 20;
+
+  20:
+
+    IF reader.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := reader.Error, Message := 'file read without an error');
+    AssertTrue(Condition := reader.ReadyForParsing, Message := 'ready for parsing');
+    reader.NextField();
+    field := reader.Field;
+    AssertEquals_DINT(Expected := 100, Actual := TO_DINT(LEN2(ADR(field))), Message := 'all 100 characters of the field');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_MissingFileGivesAnError" Id="{edf26866-4cf4-4233-b27c-633b9529145d}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_MissingFileGivesAnError
+VAR_INST
+  reader : T_CsvFileReader;
+  testFile : T_TestFile;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+reader();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    testFile.Delete(FilePath := F_TestFilePath('csv_missing.csv'));
+    step := 10;
+
+  10:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    reader.SetFileParams(FilePath := F_TestFilePath('csv_missing.csv'), Separator := ASCI_COMMA);
+    reader.GetFile();
+    step := 20;
+
+  20:
+
+    IF reader.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertTrue(Condition := reader.Error, Message := 'a missing file gives an error');
+    AssertFalse(Condition := reader.FileExists, Message := 'FileExists is FALSE for a missing file');
+    AssertFalse(Condition := reader.ReadyForParsing, Message := 'a missing file is not ready for parsing');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_ReadsEachFieldWithItsRowAndColumn" Id="{5fe6a838-4983-4142-9880-e509c0147447}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_ReadsEachFieldWithItsRowAndColumn
+VAR_INST
+  reader : T_CsvFileReader;
+  testFile : T_TestFile;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+reader();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    testFile.Write(FilePath := F_TestFilePath('csv_read.csv'), Content := 'a,b$R$Nc,d$R$N');
+    step := 10;
+
+  10:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := testFile.Error, Message := 'CSV file written for the test');
+    reader.SetFileParams(FilePath := F_TestFilePath('csv_read.csv'), Separator := ASCI_COMMA);
+    reader.GetFile();
+    step := 20;
+
+  20:
+
+    IF reader.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := reader.Error, Message := 'file read without an error');
+    AssertTrue(Condition := reader.ReadyForParsing, Message := 'ready for parsing');
+    reader.NextField();
+    AssertEquals_STRING(Expected := 'a', Actual := reader.Field, Message := 'field a');
+    AssertEquals_UINT(Expected := 0, Actual := reader.Row, Message := 'row of a');
+    AssertEquals_UINT(Expected := 0, Actual := reader.Column, Message := 'column of a');
+    reader.NextField();
+    AssertEquals_STRING(Expected := 'b', Actual := reader.Field, Message := 'field b');
+    AssertEquals_UINT(Expected := 0, Actual := reader.Row, Message := 'row of b');
+    AssertEquals_UINT(Expected := 1, Actual := reader.Column, Message := 'column of b');
+    reader.NextField();
+    AssertEquals_STRING(Expected := 'c', Actual := reader.Field, Message := 'field c');
+    AssertEquals_UINT(Expected := 1, Actual := reader.Row, Message := 'row of c');
+    AssertEquals_UINT(Expected := 0, Actual := reader.Column, Message := 'column of c');
+    reader.NextField();
+    AssertEquals_STRING(Expected := 'd', Actual := reader.Field, Message := 'field d');
+    AssertEquals_UINT(Expected := 1, Actual := reader.Row, Message := 'row of d');
+    AssertEquals_UINT(Expected := 1, Actual := reader.Column, Message := 'column of d');
+    AssertFalse(Condition := reader.Eof, Message := 'not at the end on the last field');
+    reader.NextField();
+    AssertTrue(Condition := reader.Eof, Message := 'end of file after the last field');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_ReadsSemicolonSeparatedFields" Id="{907f74f9-e12e-44ba-94dd-abdec2742e6b}">
+      <Declaration><![CDATA[METHOD PRIVATE Test_ReadsSemicolonSeparatedFields
+VAR_INST
+  reader : T_CsvFileReader;
+  testFile : T_TestFile;
+  timeout : TON;
+  step : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT TcUnit.TEST_ORDERED(__POUNAME()) THEN
+  RETURN;
+END_IF
+
+reader();
+testFile();
+
+timeout(IN := TRUE, PT := TestFiles.TIMEOUT);
+
+IF timeout.Q THEN
+  AssertTrue(Condition := FALSE, Message := 'the file operation did not finish in time');
+  TEST_FINISHED_NAMED(__POUNAME());
+  RETURN;
+END_IF
+
+CASE step OF
+
+  0:
+
+    testFile.Write(FilePath := F_TestFilePath('csv_read_semicolons.csv'), Content := 'a;b$R$N');
+    step := 10;
+
+  10:
+
+    IF testFile.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := testFile.Error, Message := 'CSV file written for the test');
+    reader.SetFileParams(FilePath := F_TestFilePath('csv_read_semicolons.csv'), Separator := ASCI_SEMI_COLON);
+    reader.GetFile();
+    step := 20;
+
+  20:
+
+    IF reader.Busy THEN
+      RETURN;
+    END_IF
+
+    AssertFalse(Condition := reader.Error, Message := 'file read without an error');
+    AssertTrue(Condition := reader.ReadyForParsing, Message := 'ready for parsing');
+    reader.NextField();
+    AssertEquals_STRING(Expected := 'a', Actual := reader.Field, Message := 'field a');
+    AssertEquals_UINT(Expected := 0, Actual := reader.Row, Message := 'row of a');
+    AssertEquals_UINT(Expected := 0, Actual := reader.Column, Message := 'column of a');
+    reader.NextField();
+    AssertEquals_STRING(Expected := 'b', Actual := reader.Field, Message := 'field b');
+    AssertEquals_UINT(Expected := 0, Actual := reader.Row, Message := 'row of b');
+    AssertEquals_UINT(Expected := 1, Actual := reader.Column, Message := 'column of b');
+    TEST_FINISHED_NAMED(__POUNAME());
+
+END_CASE
+]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

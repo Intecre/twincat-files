@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.25">
+  <POU Name="T_TestDirectory" Id="{3a67114a-7265-4ca9-9903-10d074580a63}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK T_TestDirectory
+VAR
+  createDirectory : FB_CreateDir;
+  requested : BOOL;
+  _ready : BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF _ready THEN
+  RETURN;
+END_IF
+
+createDirectory(sNetId := '', sPathName := TestFiles.DIRECTORY, bExecute := TRUE);
+
+IF requested AND NOT createDirectory.bBusy THEN
+  _ready := TRUE;
+END_IF
+
+requested := TRUE;
+]]></ST>
+    </Implementation>
+    <Property Name="Ready" Id="{7f37cdd5-a72d-4c53-998e-557cde053969}">
+      <Declaration><![CDATA[PROPERTY Ready : BOOL
+]]></Declaration>
+      <Get Name="Get" Id="{e3c9d33e-9001-4f03-a18e-1ff14ecbc40f}">
+        <Declaration><![CDATA[
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Ready := _ready;
+]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+  </POU>
+</TcPlcObject>
