@@ -236,7 +236,7 @@ recipeFile(Options := recipeOptions);
 
 <div class="note">
   <strong>The library is also a TcPkg package</strong>
-  Each release carries <code>Intecre.File.1.3.1.nupkg</code>, which declares Intecre.Utilities and the Beckhoff library packages as dependencies. With the Intecre TcPkg feed configured, <code>tcpkg install Intecre.File</code> installs everything. Otherwise put both Intecre packages in a folder, add it as a source with <code>tcpkg source add -n local -s &lt;folder&gt;</code>, and install from there.
+  Each release carries <code>Intecre.File.1.4.0.nupkg</code>, which declares Intecre.Utilities 4.2.0 or later and the Beckhoff library packages as dependencies. With the Intecre TcPkg feed configured, <code>tcpkg install Intecre.File</code> installs everything. Otherwise put both Intecre packages in a folder, add it as a source with <code>tcpkg source add -n local -s &lt;folder&gt;</code>, and install from there.
 </div>
 
 <h2 id="persist"><span class="n">4</span>Keeping a structure in a file</h2>
@@ -535,6 +535,7 @@ recipeFileCheck();
   <tr><td><code>T_Txt<wbr>File<wbr>Writer.Write</code> keeps the whole <code>TxtFileString</code>, up to 300 characters, not 255.</td><td>Text that was cut at 255 characters now reaches the file whole.</td></tr>
   <tr><td>On both JSON blocks, <code>Reset()</code> after a file error holds until the next start.</td><td>Nothing. Calling <code>Reset()</code> and the start method one after the other still works.</td></tr>
   <tr><td><code>T_Struct<wbr>Persistence</code>: <code>ReadSuccess</code> and <code>WriteSuccess</code> rise once the read or write has finished, so <code>WriteToFile()</code> works as soon as <code>ReadSuccess</code> is TRUE. <code>ReadFromFile()</code> works again after a failed read. A change made while a file is being written is saved by the next automatic write. An automatic write that falls due during a read or write waits for it to finish, rather than starting over it.</td><td>The wait after <code>ReadSuccess</code> and the retries of <code>WriteToFile()</code> are no longer needed, and can stay.</td></tr>
+  <tr><td>The TcPkg package needs Intecre.Utilities 4.2.0 or later; 1.3.1.0 asked for 4.1.0.</td><td>Nothing, with the Intecre feed configured: <code>tcpkg install Intecre.File</code> brings 4.2.0 with it. Utilities 4.1.0 no longer installs, because Beckhoff's feed has dropped the Tc2_MDP version it needs. Without the feed, put the 4.2.0 package in your local source.</td></tr>
   <tr><td><code>T_Struct<wbr>Persistence</code>: <code>ReadSuccess</code> is FALSE for a file that is too long or not valid JSON for the type; it used to rise. The automatic write starts only once a read or write has succeeded.</td><td>A structure whose file cannot be read is no longer saved on its own, so a missing file stays missing when <code>Create<wbr>File<wbr>If<wbr>Doesnt<wbr>Exist</code> is FALSE, and an unreadable file is left for you to fix. Call <code>WriteToFile()</code> to replace it.</td></tr>
 </table>
 
@@ -613,7 +614,7 @@ recipeFileCheck();
   <li><strong>The CSV separator is one global</strong> for the whole PLC, and only a comma or a semicolon.</li>
   <li><strong>Files live in router memory while the blocks work on them.</strong> A file being read is held whole until the next read; a file being built grows until <code>ClearBuffer()</code>. A very large file needs router memory of its size.</li>
   <li><strong>The writers replace or append whole files.</strong> They do not create folders, and do not write safely: a power cut during a write can leave the file short. Keep a copy of a file you cannot lose.</li>
-  <li><strong>Checked on one setup.</strong> TwinCAT 3.1 build 4026 on the user-mode runtime, 10 November 2026: 37 TcUnit tests in 7 suites, and all of them pass. Not yet checked: a real-time target, a changed <code>JSON_DOC_SIZE</code> set through the library reference, and reading a quoted CSV field back with <code>T_CsvFileReader</code>.</li>
+  <li><strong>Checked on one setup.</strong> TwinCAT 3.1 build 4026 on the user-mode runtime with Intecre.Utilities 4.2.0.0, 12 November 2026: 37 TcUnit tests in 7 suites, and all of them pass. Not yet checked: a real-time target, a changed <code>JSON_DOC_SIZE</code> set through the library reference, and reading a quoted CSV field back with <code>T_CsvFileReader</code>.</li>
 </ul>
 
 <footer>

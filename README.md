@@ -28,7 +28,7 @@ All references are placeholders resolved to the newest installed version.
 
 | Library | TcPkg package | Feed |
 |---|---|---|
-| Intecre.Utilities 4.1 or later | `Intecre.Utilities` | [twincat-utils releases](https://github.com/Intecre/twincat-utils/releases), Intecre feed |
+| Intecre.Utilities 4.2 or later | `Intecre.Utilities` | [twincat-utils releases](https://github.com/Intecre/twincat-utils/releases), Intecre feed |
 | Tc2_Standard | `TwinCAT.XAE.PLC.Lib.Tc2_Standard` | stable, part of `TwinCAT.StandardRM.XAE` |
 | Tc2_System | `TwinCAT.XAE.PLC.Lib.Tc2_System` | stable, part of `TwinCAT.StandardRM.XAE` |
 | Tc2_Utilities | `TwinCAT.XAE.PLC.Lib.Tc2_Utilities` | stable, part of `TwinCAT.StandardRM.XAE` |
@@ -49,7 +49,7 @@ The solution `Intecre-File.sln` holds two PLC projects:
 2. Build `TestRunner` and activate the configuration on a runtime. The TwinCAT user-mode runtime on the engineering PC is enough.
 3. Read the results in the Error List.
 
-Current state: 7 suites, 37 tests, and all of them pass on 4026 with the user-mode runtime (10 November 2026). A known issue found by reading the code is listed in section 11, Limits, of the [user guide](docs/user-guide.html#limits).
+Current state: 7 suites, 37 tests, and all of them pass on 4026 with the user-mode runtime and Intecre.Utilities 4.2.0.0 (12 November 2026). A known issue found by reading the code is listed in section 11, Limits, of the [user guide](docs/user-guide.html#limits).
 
 ## Releasing
 
