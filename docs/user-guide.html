@@ -191,7 +191,7 @@
 <p>You need TwinCAT 3.1.4026 or later. This keeps a recipe in <code>C:\Data\Recipe.json</code>: it loads the file at start-up, or creates it from the recipe's initial values, and then saves the recipe on request and on its own after it changes.</p>
 
 <ol class="steps">
-  <li><strong>Install the libraries.</strong> Download <code>Intecre_File.library</code> from the <a href="https://github.com/Intecre/twincat-files/releases">twincat-files releases</a> and <code>IntecreUtilities.library</code> (4.1 or later) from the <a href="https://github.com/Intecre/twincat-utils/releases">twincat-utils releases</a>. Install both with <em>PLC &gt; Library Repository &gt; Install</em>. The Beckhoff libraries they use (<code>Tc2_Standard</code>, <code>Tc2_System</code>, <code>Tc2_Utilities</code> and <code>Tc3_JsonXml</code>) come with every 4026 XAE.</li>
+  <li><strong>Install the libraries.</strong> Download <code>Intecre_File.library</code> from the <a href="https://github.com/Intecre/twincat-files/releases">twincat-files releases</a> and <code>IntecreUtilities.library</code> (4.2 or later) from the <a href="https://github.com/Intecre/twincat-utils/releases">twincat-utils releases</a>. Install both with <em>PLC &gt; Library Repository &gt; Install</em>. The Beckhoff libraries they use (<code>Tc2_Standard</code>, <code>Tc2_System</code>, <code>Tc2_Utilities</code> and <code>Tc3_JsonXml</code>) come with every 4026 XAE.</li>
 
   <li><strong>Reference them.</strong> In your PLC project, choose <em>References &gt; Add library</em> and add <em>Intecre.File (Intecre Ltd)</em> and <em>Intecre.Utilities (Intecre Ltd)</em>.</li>
 
@@ -225,10 +225,10 @@ recipeOptions.AddressOfStruct := ADR(recipe);
 recipeOptions.SizeOfStruct := SIZEOF(recipe);
 recipeFile(Options := recipeOptions);
 
-<span class="k">IF</span> saveRequested <span class="k">AND</span> recipeFile.WriteToFile() <span class="k">THEN</span>
+<span class="k">IF</span> saveRequested <span class="k">AND_THEN</span> recipeFile.WriteToFile() <span class="k">THEN</span>
   saveRequested := <span class="k">FALSE</span>;
 <span class="k">END_IF</span></code></pre>
-    <code>WriteToFile()</code> returns FALSE while a read or write is running, so the code keeps asking until it returns TRUE.</li>
+    <code>WriteToFile()</code> returns FALSE while a read or write is running, so the code keeps asking until it returns TRUE. <code>AND_THEN</code> calls it only while <code>saveRequested</code> is TRUE. With a plain <code>AND</code>, TwinCAT evaluates both sides every cycle, so the code would start a new write each time the last one finished, whether or not a save was requested.</li>
 
   <li><strong>Run it.</strong> The first time, there is no file: <code>WriteSuccess</code> and <code>FileCreated</code> rise, and the file holds the initial values. After a restart, <code>ReadSuccess</code> rises and the recipe holds what the file held.
 <pre class="out"><code><span class="o">{"Name":"","Speed":1.0,"Count":0,"Enabled":false}</span></code></pre></li>
